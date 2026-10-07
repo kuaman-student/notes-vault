@@ -24,7 +24,8 @@ import {
   Calendar,
   Bot,
   ChevronRight,
-  Folder
+  Folder,
+  Brain
 } from 'lucide-react';
 
 export default function NoteReader() {
@@ -46,7 +47,9 @@ export default function NoteReader() {
     setSelectedFolderId,
     setSidebarViewMode,
     setIsFolderModalOpen,
-    setIsUploadOpen
+    setIsUploadOpen,
+    openQuizForNote,
+    setIsQuizModalOpen
   } = useNotes();
 
   const { requireAuth } = useSecurity();
@@ -77,7 +80,7 @@ export default function NoteReader() {
         </p>
 
         {/* Quick Action Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-8 w-full max-w-xl text-left">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 w-full max-w-2xl text-left">
           {/* Action 1: Create Note */}
           <div
             onClick={() => {
@@ -86,16 +89,16 @@ export default function NoteReader() {
                 setIsEditorOpen(true);
               });
             }}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
           >
-            <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
               <Edit3 className="w-4 h-4" />
             </div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
               + New Note
             </h4>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Write a note from scratch in live Markdown.
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Write notes from scratch in Markdown.
             </p>
           </div>
 
@@ -106,16 +109,16 @@ export default function NoteReader() {
                 setIsFolderModalOpen(true);
               });
             }}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
           >
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
               <Folder className="w-4 h-4" />
             </div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
               📁 New Branch
             </h4>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Create a subject folder or subfolder.
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Organize subject & subfolder tree.
             </p>
           </div>
 
@@ -126,16 +129,32 @@ export default function NoteReader() {
                 setIsUploadOpen(true);
               });
             }}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
               <Download className="w-4 h-4" />
             </div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
               📂 Upload .md
             </h4>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[10px] text-slate-400 mt-0.5">
               Drag-and-drop existing Markdown files.
+            </p>
+          </div>
+
+          {/* Action 4: Quiz Arena */}
+          <div
+            onClick={() => setIsQuizModalOpen(true)}
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+              <Brain className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+              🧠 Quiz Arena
+            </h4>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Generate test & track your scores.
             </p>
           </div>
         </div>
@@ -290,6 +309,16 @@ export default function NoteReader() {
               >
                 <Sparkles className="w-3.5 h-3.5 text-teal-500" />
                 <span className="hidden sm:inline">Flashcards</span>
+              </button>
+
+              {/* Quiz Arena from this Note */}
+              <button
+                onClick={() => openQuizForNote(activeNote.id)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-500/15 to-indigo-500/15 hover:from-purple-500/25 hover:to-indigo-500/25 text-purple-600 dark:text-purple-300 border border-purple-500/30 transition-all shadow-sm"
+                title="Generate Quiz from this Note"
+              >
+                <Brain className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden sm:inline">Quiz</span>
               </button>
 
               {/* Zen Mode */}

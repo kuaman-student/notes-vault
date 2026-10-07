@@ -220,7 +220,7 @@ export const FirebaseService = {
     }
   },
 
-  subscribeToFolders(callback) {
+      subscribeToFolders(callback) {
     try {
       const firestore = this.getDb();
       if (!firestore) return () => {};
@@ -236,6 +236,69 @@ export const FirebaseService = {
       });
     } catch (err) {
       console.warn('Failed to subscribe to folders:', err);
+      return () => {};
+    }
+  },
+
+  // --- QUIZZES CLOUD SYNC ---
+  async fetchQuizzes() {
+    try {
+      const firestore = this.getDb();
+      if (!firestore) return [];
+      const colRef = collection(firestore, 'quizzes');
+      const snapshot = await getDocs(colRef);
+      const quizzes = [];
+      snapshot.forEach((docSnap) => {
+        quizzes.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      return quizzes;
+    } catch (err) {
+      console.warn('Firebase fetchQuizzes failed:', err);
+      return [];
+    }
+  },
+
+  async saveQuiz(quiz) {
+    try {
+      const firestore = this.getDb();
+      if (!firestore || !quiz.id) return;
+      const docRef = doc(firestore, 'quizzes', quiz.id);
+      await setDoc(docRef, {
+        ...quiz,
+        cloudSyncedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firebase saveQuiz failed:', err);
+    }
+  },
+
+  async deleteQuiz(quizId) {
+    try {
+      const firestore = this.getDb();
+      if (!firestore || !quizId) return;
+      const docRef = doc(firestore, 'quizzes', quizId);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn('Firebase deleteQuiz failed:', err);
+    }
+  },
+
+  subscribeToQuizzes(callback) {
+    try {
+      const firestore = this.getDb();
+      if (!firestore) return () => {};
+      const colRef = collection(firestore, 'quizzes');
+      return onSnapshot(colRef, (snapshot) => {
+        const quizzes = [];
+        snapshot.forEach((docSnap) => {
+          quizzes.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        callback(quizzes);
+      }, (err) => {
+        console.warn('Firestore quizzes onSnapshot notice:', err);
+      });
+    } catch (err) {
+      console.warn('Failed to subscribe to quizzes:', err);
       return () => {};
     }
   }

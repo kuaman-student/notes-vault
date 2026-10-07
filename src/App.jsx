@@ -17,6 +17,7 @@ import ScratchpadDrawer from './components/scratchpad/ScratchpadDrawer';
 import CreateFolderModal from './components/folders/CreateFolderModal';
 import VaultPinModal from './components/security/VaultPinModal';
 import CloudSyncModal from './components/database/CloudSyncModal';
+import QuizArenaModal from './components/quiz/QuizArenaModal';
 
 function MainLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -42,6 +43,8 @@ function MainLayout() {
     setIsPomodoroOpen,
     isCloudSyncOpen,
     setIsCloudSyncOpen,
+    isQuizModalOpen,
+    setIsQuizModalOpen,
     isLoading
   } = useNotes();
 
@@ -59,7 +62,7 @@ function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
       {/* Top Navigation */}
       <Header
         isMobileSidebarOpen={isMobileSidebarOpen}
@@ -136,6 +139,12 @@ function MainLayout() {
       <CloudSyncModal
         isOpen={isCloudSyncOpen}
         onClose={() => setIsCloudSyncOpen(false)}
+      />
+
+      {/* Multi-Note Quiz Arena & Exam Simulator Modal */}
+      <QuizArenaModal
+        isOpen={isQuizModalOpen}
+        onClose={() => setIsQuizModalOpen(false)}
       />
     </div>
   );

@@ -1,15 +1,17 @@
 import { INITIAL_FOLDERS, INITIAL_NOTES } from '../data/initialNotes';
 
 const DB_NAME = 'NexusNotesDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NOTES = 'notes';
 const STORE_CATEGORIES = 'categories';
 const STORE_FOLDERS = 'folders';
+const STORE_QUIZZES = 'quizzes';
 
 const LOCAL_STORAGE_NOTES = 'nexus_notes_data';
 const LOCAL_STORAGE_CATEGORIES = 'nexus_categories_data';
 const LOCAL_STORAGE_FOLDERS = 'nexus_folders_data';
 const LOCAL_STORAGE_SCRATCHPAD = 'nexus_scratchpad_data';
+const LOCAL_STORAGE_QUIZZES = 'nexus_quizzes_data';
 const SETTINGS_KEY = 'nexus_notes_settings';
 
 export const DEFAULT_CATEGORIES = [
@@ -35,6 +37,9 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains(STORE_FOLDERS)) {
         db.createObjectStore(STORE_FOLDERS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_QUIZZES)) {
+        db.createObjectStore(STORE_QUIZZES, { keyPath: 'id' });
       }
     };
 
@@ -439,5 +444,96 @@ ${note.content}
     } catch (e) {
       console.warn('Failed to save settings:', e);
     }
+  },
+
+  // --- QUIZZES & EXAM VAULT ---
+  async getAllQuizzes() {
+    try {
+      const db = await openDB();
+      return new Promise((resolve) => {
+        const transaction = db.transaction(STORE_QUIZZES, 'readonly');
+        const store = transaction.objectStore(STORE_QUIZZES);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+          resolve(request.result || []);
+        };
+
+        request.onerror = () => {
+          const fallback = localStorage.getItem(LOCAL_STORAGE_QUIZZES);
+          resolve(fallback ? JSON.parse(fallback) : []);
+        };
+      });
+    } catch {
+      const fallback = localStorage.getItem(LOCAL_STORAGE_QUIZZES);
+      return fallback ? JSON.parse(fallback) : [];
+    }
+  },
+
+  async saveQuiz(quiz) {
+    try {
+      const db = await openDB();
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_QUIZZES, 'readwrite');
+        const store = transaction.objectStore(STORE_QUIZZES);
+        const request = store.put(quiz);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.warn('IndexedDB saveQuiz fallback to localStorage:', e);
+    }
+    const current = await this.getAllQuizzes();
+    const updated = [quiz, ...current.filter((q) => q.id !== quiz.id)];
+    localStorage.setItem(LOCAL_STORAGE_QUIZZES, JSON.stringify(updated));
+    return updated;
+  },
+
+  async deleteQuiz(quizId) {
+    try {
+      const db = await openDB();
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_QUIZZES, 'readwrite');
+        const store = transaction.objectStore(STORE_QUIZZES);
+        const request = store.delete(quizId);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (e) {
+      console.warn('IndexedDB deleteQuiz fallback to localStorage:', e);
+    }
+    const current = await this.getAllQuizzes();
+    const updated = current.filter((q) => q.id !== quizId);
+    localStorage.setItem(LOCAL_STORAGE_QUIZZES, JSON.stringify(updated));
+    return updated;
+  },
+
+  async clearAllQuizzes() {
+    try {
+      const db = await openDB();
+      await new Promise((resolve) => {
+        const transaction = db.transaction(STORE_QUIZZES, 'readwrite');
+        const store = transaction.objectStore(STORE_QUIZZES);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+      });
+    } catch {}
+    localStorage.removeItem(LOCAL_STORAGE_QUIZZES);
+    return [];
+  },
+
+  async saveAllQuizzes(quizzes) {
+    try {
+      const db = await openDB();
+      const transaction = db.transaction(STORE_QUIZZES, 'readwrite');
+      const store = transaction.objectStore(STORE_QUIZZES);
+      store.clear();
+      for (const q of quizzes) {
+        store.put(q);
+      }
+    } catch {}
+    localStorage.setItem(LOCAL_STORAGE_QUIZZES, JSON.stringify(quizzes));
+    return quizzes;
   }
 };

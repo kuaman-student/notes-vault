@@ -20,7 +20,8 @@ import {
   Cloud,
   Lock,
   Unlock,
-  RefreshCw
+  RefreshCw,
+  Brain
 } from 'lucide-react';
 
 export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) {
@@ -36,6 +37,9 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
     setIsScratchpadOpen,
     cloudSyncStatus,
     setIsCloudSyncOpen,
+    isQuizModalOpen,
+    setIsQuizModalOpen,
+    quizzes,
     notes
   } = useNotes();
 
@@ -57,7 +61,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+    <header className="sticky top-0 z-40 w-full shrink-0 backdrop-blur-xl bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Left: Mobile Menu Toggle & Brand Logo */}
         <div className="flex items-center space-x-3">
@@ -156,6 +160,21 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
               <span className="hidden xl:inline">Read-Only</span>
             </button>
           )}
+
+          {/* Neural Quiz Arena Button */}
+          <button
+            onClick={() => setIsQuizModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-mono bg-gradient-to-r from-purple-500/15 to-teal-500/15 hover:from-purple-500/25 hover:to-teal-500/25 text-purple-300 hover:text-white border border-purple-500/30 transition shrink-0 shadow-sm"
+            title="Neural Quiz Arena (Generate & Take Tests)"
+          >
+            <Brain className="w-4 h-4 text-purple-400 animate-pulse" />
+            <span className="hidden sm:inline font-bold">Quiz Arena</span>
+            {quizzes.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-bold">
+                {quizzes.length}
+              </span>
+            )}
+          </button>
 
           {/* Cosmic Knowledge Graph HUD */}
           <button

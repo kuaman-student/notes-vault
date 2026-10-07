@@ -15,7 +15,8 @@ import {
   ChevronsDown,
   ChevronsUp,
   GitBranch,
-  Filter
+  Filter,
+  Brain
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -41,7 +42,9 @@ export default function Sidebar({ isOpen, onClose }) {
     collapseAllFolders,
     sidebarViewMode,
     setSidebarViewMode,
-    toggleBookmark
+    toggleBookmark,
+    quizzes,
+    setIsQuizModalOpen
   } = useNotes();
 
   const { requireAuth } = useSecurity();
@@ -81,13 +84,13 @@ export default function Sidebar({ isOpen, onClose }) {
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 top-16 z-30 bg-black/70 backdrop-blur-sm lg:hidden animate-fade-in"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-16 bottom-0 left-0 z-40 w-80 bg-[#12141c] dark:bg-[#0c0e15] border-r border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out shrink-0 ${
+        className={`fixed lg:static top-16 lg:top-0 bottom-0 left-0 z-30 lg:z-10 w-80 h-[calc(100vh-4rem)] lg:h-full bg-[#12141c] dark:bg-[#0c0e15] border-r border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -151,6 +154,15 @@ export default function Sidebar({ isOpen, onClose }) {
                 title="New Root Folder"
               >
                 <FolderPlus className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Quiz Arena Trigger */}
+              <button
+                onClick={() => setIsQuizModalOpen(true)}
+                className="p-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 transition"
+                title={`Open Quiz Arena (${quizzes.length} saved)`}
+              >
+                <Brain className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -317,8 +329,21 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Bottom Upload Dropzone Action Banner */}
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/50">
+        {/* Bottom Actions Banner */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/50 space-y-2">
+          <button
+            onClick={() => setIsQuizModalOpen(true)}
+            className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/20 transition shadow-sm"
+          >
+            <div className="flex items-center space-x-2">
+              <Brain className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+              <span>Neural Quiz Arena</span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200">
+              {quizzes.length} Tests
+            </span>
+          </button>
+
           <button
             onClick={() => requireAuth(() => setIsUploadOpen(true))}
             className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-xs font-semibold border border-teal-500/20 transition shadow-sm"

@@ -10,6 +10,7 @@ export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [folders, setFolders] = useState(INITIAL_FOLDERS);
+  const [quizzes, setQuizzes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState('connecting'); // 'synced', 'syncing', 'error'
 
@@ -39,6 +40,8 @@ export function NotesProvider({ children }) {
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
+  const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+  const [quizSelectedNoteIds, setQuizSelectedNoteIds] = useState([]);
   const [scratchpadText, setScratchpadText] = useState(() => StorageService.getScratchpad());
 
   const [editingNote, setEditingNote] = useState(null);
@@ -47,6 +50,7 @@ export function NotesProvider({ children }) {
   useEffect(() => {
     let unsubscribeNotes = () => {};
     let unsubscribeFolders = () => {};
+    let unsubscribeQuizzes = () => {};
 
     async function loadData() {
       setIsLoading(true);
@@ -58,15 +62,17 @@ export function NotesProvider({ children }) {
         }
 
         // 1. Instant local IndexedDB load (0ms latency)
-        const [loadedCats, loadedFolders, loadedNotes] = await Promise.all([
+        const [loadedCats, loadedFolders, loadedNotes, loadedQuizzes] = await Promise.all([
           StorageService.getAllCategories(),
           StorageService.getAllFolders(),
-          StorageService.getAllNotes()
+          StorageService.getAllNotes(),
+          StorageService.getAllQuizzes()
         ]);
 
         setCategories(loadedCats.length > 0 ? loadedCats : DEFAULT_CATEGORIES);
         setFolders(loadedFolders || []);
         setNotes(loadedNotes || []);
+        setQuizzes(loadedQuizzes || []);
 
         if (loadedNotes && loadedNotes.length > 0) {
           setSelectedNoteId(loadedNotes[0].id);
@@ -75,10 +81,11 @@ export function NotesProvider({ children }) {
         // 2. Asynchronous Cloud Fetch from Firebase (notes-vault-dfc48)
         try {
           setCloudSyncStatus('syncing');
-          const [cloudNotes, cloudFolders, cloudCategories] = await Promise.all([
+          const [cloudNotes, cloudFolders, cloudCategories, cloudQuizzes] = await Promise.all([
             FirebaseService.fetchNotes(),
             FirebaseService.fetchFolders(),
-            FirebaseService.fetchCategories()
+            FirebaseService.fetchCategories(),
+            FirebaseService.fetchQuizzes()
           ]);
 
           if (cloudNotes && cloudNotes.length > 0) {
@@ -93,6 +100,10 @@ export function NotesProvider({ children }) {
           if (cloudCategories && cloudCategories.length > 0) {
             setCategories(cloudCategories);
             await StorageService.saveAllCategories(cloudCategories);
+          }
+          if (cloudQuizzes && cloudQuizzes.length > 0) {
+            setQuizzes(cloudQuizzes);
+            await StorageService.saveAllQuizzes(cloudQuizzes);
           }
 
           setCloudSyncStatus('synced');
@@ -115,6 +126,13 @@ export function NotesProvider({ children }) {
             StorageService.saveAllFolders(liveFolders);
           }
         });
+
+        unsubscribeQuizzes = FirebaseService.subscribeToQuizzes((liveQuizzes) => {
+          if (liveQuizzes && liveQuizzes.length > 0) {
+            setQuizzes(liveQuizzes);
+            StorageService.saveAllQuizzes(liveQuizzes);
+          }
+        });
       } catch (err) {
         console.error('Failed to load data:', err);
       } finally {
@@ -127,6 +145,7 @@ export function NotesProvider({ children }) {
     return () => {
       unsubscribeNotes();
       unsubscribeFolders();
+      unsubscribeQuizzes();
     };
   }, []);
 
@@ -461,6 +480,34 @@ export function NotesProvider({ children }) {
     StorageService.exportAsJSON(notes, categories, folders);
   };
 
+  // --- QUIZ & EXAM ARENA HANDLERS ---
+  const saveQuizAttempt = async (quizData) => {
+    const updated = await StorageService.saveQuiz(quizData);
+    setQuizzes(updated);
+    FirebaseService.saveQuiz(quizData);
+    return updated;
+  };
+
+  const deleteQuizAttempt = async (quizId) => {
+    const updated = await StorageService.deleteQuiz(quizId);
+    setQuizzes(updated);
+    FirebaseService.deleteQuiz(quizId);
+    return updated;
+  };
+
+  const clearAllQuizAttempts = async () => {
+    for (const q of quizzes) {
+      FirebaseService.deleteQuiz(q.id);
+    }
+    await StorageService.clearAllQuizzes();
+    setQuizzes([]);
+  };
+
+  const openQuizForNote = (noteId) => {
+    setQuizSelectedNoteIds([noteId]);
+    setIsQuizModalOpen(true);
+  };
+
   return (
     <NotesContext.Provider
       value={{
@@ -468,6 +515,7 @@ export function NotesProvider({ children }) {
         filteredNotes,
         folders,
         categories,
+        quizzes,
         isLoading,
         cloudSyncStatus,
         activeNote,
@@ -490,6 +538,15 @@ export function NotesProvider({ children }) {
         syncCloudData,
         isCloudSyncOpen,
         setIsCloudSyncOpen,
+        // Quiz & Exam Arena
+        isQuizModalOpen,
+        setIsQuizModalOpen,
+        quizSelectedNoteIds,
+        setQuizSelectedNoteIds,
+        saveQuizAttempt,
+        deleteQuizAttempt,
+        clearAllQuizAttempts,
+        openQuizForNote,
         // Folder handlers
         createFolder,
         deleteFolder,

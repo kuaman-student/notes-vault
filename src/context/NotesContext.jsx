@@ -17,13 +17,83 @@ export function NotesProvider({ children }) {
   // View Mode: 'tree' (branch-wise folder tree matching screenshot) or 'list'
   const [sidebarViewMode, setSidebarViewMode] = useState('tree');
 
-  // Filters & Active Selection
-  const [selectedNoteId, setSelectedNoteId] = useState(null);
+  // Helper to extract note ID from URL hash (#note=xyz)
+  const getNoteIdFromHash = () => {
+    try {
+      const hash = window.location.hash;
+      const match = hash.match(/^#note=(.+)$/);
+      return match ? decodeURIComponent(match[1]) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Filters & Active Selection (default to hash or null for Dashboard Home)
+  const [selectedNoteId, setSelectedNoteIdState] = useState(() => getNoteIdFromHash());
+  const [lastViewedNoteId, setLastViewedNoteId] = useState(() => {
+    return localStorage.getItem('nexus_last_viewed_note_id') || null;
+  });
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedTag, setSelectedTag] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'mastered', 'need_revision', 'bookmarked'
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Interactive Checklist Persistence
+  const [noteChecklists, setNoteChecklists] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nexus_note_checklists_v2');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleChecklistItem = (noteId, itemIndex) => {
+    setNoteChecklists((prev) => {
+      const current = prev[noteId] ? { ...prev[noteId] } : {};
+      current[itemIndex] = !current[itemIndex];
+      const updated = { ...prev, [noteId]: current };
+      try {
+        localStorage.setItem('nexus_note_checklists_v2', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Safe note selection with URL Hash Sync
+  const setSelectedNoteId = (id) => {
+    setSelectedNoteIdState(id);
+    if (id) {
+      try {
+        window.location.hash = `note=${encodeURIComponent(id)}`;
+      } catch {}
+      setLastViewedNoteId(id);
+      localStorage.setItem('nexus_last_viewed_note_id', id);
+    } else {
+      try {
+        if (window.location.hash) {
+          history.pushState(null, '', window.location.pathname + window.location.search);
+        }
+      } catch {
+        window.location.hash = '';
+      }
+    }
+  };
+
+  // Listen to browser hash navigation (Back/Forward buttons)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const noteId = getNoteIdFromHash();
+      setSelectedNoteIdState(noteId);
+      if (noteId) {
+        setLastViewedNoteId(noteId);
+        localStorage.setItem('nexus_last_viewed_note_id', noteId);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Modals & Tools
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -74,8 +144,10 @@ export function NotesProvider({ children }) {
         setNotes(loadedNotes || []);
         setQuizzes(loadedQuizzes || []);
 
-        if (loadedNotes && loadedNotes.length > 0) {
-          setSelectedNoteId(loadedNotes[0].id);
+        // Only select note if specified in URL hash, otherwise keep null for Dashboard
+        const hashNoteId = getNoteIdFromHash();
+        if (hashNoteId && loadedNotes && loadedNotes.some((n) => n.id === hashNoteId)) {
+          setSelectedNoteIdState(hashNoteId);
         }
 
         // 2. Asynchronous Cloud Fetch from Firebase (notes-vault-dfc48)
@@ -91,7 +163,9 @@ export function NotesProvider({ children }) {
           if (cloudNotes && cloudNotes.length > 0) {
             setNotes(cloudNotes);
             await StorageService.saveAllNotes(cloudNotes);
-            setSelectedNoteId((prev) => prev || cloudNotes[0]?.id || null);
+            if (hashNoteId && cloudNotes.some((n) => n.id === hashNoteId)) {
+              setSelectedNoteIdState(hashNoteId);
+            }
           }
           if (cloudFolders && cloudFolders.length > 0) {
             setFolders(cloudFolders);
@@ -155,10 +229,10 @@ export function NotesProvider({ children }) {
     StorageService.saveScratchpad(text);
   };
 
-  // Compute active note
+  // Compute active note - strictly returns null if selectedNoteId is null (shows DashboardHome)
   const activeNote = useMemo(() => {
-    if (!notes.length) return null;
-    return notes.find((n) => n.id === selectedNoteId) || notes[0];
+    if (!notes.length || !selectedNoteId) return null;
+    return notes.find((n) => n.id === selectedNoteId) || null;
   }, [notes, selectedNoteId]);
 
   // Compute all available tags
@@ -600,6 +674,9 @@ export function NotesProvider({ children }) {
         setIsPomodoroOpen,
         editingNote,
         setEditingNote,
+        noteChecklists,
+        toggleChecklistItem,
+        lastViewedNoteId
       }}
     >
       {children}

@@ -1,56 +1,54 @@
-import React, { useState, useMemo } from 'react';
-import { X, Sparkles, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Sparkles, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Zap } from 'lucide-react';
+import { SmartQuizEngine } from '../../services/smartQuizEngine';
 import confetti from 'canvas-confetti';
 
 export default function FlashcardsModal({ note, isOpen, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [knownCards, setKnownCards] = useState(new Set());
+  const [ratings, setRatings] = useState({}); // { [cardId]: 'hard' | 'good' | 'easy' }
 
-  // Generate flashcards from note sections
+  // Generate cards via Smart Extraction Engine
   const cards = useMemo(() => {
     if (!note || !note.content) return [];
-    const generated = [];
-
-    // Card 1: Overview
-    if (note.summary) {
-      generated.push({
-        question: `What is the core concept of "${note.title}"?`,
-        answer: note.summary,
-        category: note.category
-      });
-    }
-
-    // Split markdown by H2 headers
-    const sections = note.content.split(/\n(?=##\s+)/);
-    sections.forEach((section) => {
-      const match = section.match(/^##\s+(.+)\r?\n([\s\S]+)$/);
-      if (match) {
-        const title = match[1].trim().replace(/[*_`]/g, '');
-        const body = match[2].trim().slice(0, 320).replace(/[#*`_>]/g, '').trim() + '...';
-        generated.push({
-          question: `Explain: ${title}`,
-          answer: body,
-          category: note.category
-        });
-      }
-    });
-
-    return generated.length > 0
-      ? generated
-      : [
-          {
-            question: note.title,
-            answer: note.summary || 'Review this note for key concepts and details.',
-            category: note.category
-          }
-        ];
+    return SmartQuizEngine.generateFlashcards(note);
   }, [note]);
+
+  // Keyboard navigation & shortcuts
+  useEffect(() => {
+    if (!isOpen || cards.length === 0) return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        setIsFlipped((prev) => !prev);
+      } else if (e.key === 'ArrowRight' || e.key === 'j') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft' || e.key === 'k') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === '1') {
+        rateCurrentCard('hard');
+      } else if (e.key === '2') {
+        rateCurrentCard('good');
+      } else if (e.key === '3') {
+        rateCurrentCard('easy');
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, cards, currentIndex]);
 
   if (!isOpen || !note) return null;
 
   const currentCard = cards[currentIndex] || cards[0];
-  const isCurrentKnown = knownCards.has(currentIndex);
+  const currentRating = currentCard ? ratings[currentCard.id] : null;
 
   const handleNext = () => {
     setIsFlipped(false);
@@ -62,51 +60,65 @@ export default function FlashcardsModal({ note, isOpen, onClose }) {
     setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
   };
 
-  const toggleKnown = () => {
-    const updated = new Set(knownCards);
-    if (updated.has(currentIndex)) {
-      updated.delete(currentIndex);
-    } else {
-      updated.add(currentIndex);
-      if (updated.size === cards.length) {
-        confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-      }
+  const rateCurrentCard = (ratingLevel) => {
+    if (!currentCard) return;
+    const nextRatings = { ...ratings, [currentCard.id]: ratingLevel };
+    setRatings(nextRatings);
+
+    // If all rated easy, celebrate!
+    const ratedEasyCount = Object.values(nextRatings).filter((r) => r === 'easy').length;
+    if (ratedEasyCount === cards.length) {
+      confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
     }
-    setKnownCards(updated);
+
+    // Auto advance
+    setTimeout(() => {
+      handleNext();
+    }, 250);
   };
 
+  const masteredCount = Object.values(ratings).filter((r) => r === 'easy').length;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-fade-in font-mono">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-teal-500/30 rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col neon-glow-teal">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-teal-500 animate-pulse" />
-            <h3 className="font-bold text-slate-900 dark:text-white text-lg">
-              Placement Flashcard Mode
-            </h3>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-400 border border-teal-500/30 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-base">
+                Spaced Repetition Flashcards
+              </h3>
+              <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
+                {note.title}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Progress */}
-        <div className="mt-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>
+        {/* Progress & Stats */}
+        <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+          <span className="font-bold text-slate-200">
             Card {currentIndex + 1} of {cards.length}
           </span>
-          <span>
-            Mastered: {knownCards.size} / {cards.length}
+          <span className="flex items-center space-x-1.5 text-emerald-400 font-bold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Mastered: {masteredCount} / {cards.length}</span>
           </span>
         </div>
 
-        <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+        <div className="w-full bg-slate-950 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-800">
           <div
-            className="bg-teal-500 h-full transition-all duration-300"
+            className="bg-gradient-to-r from-teal-500 to-indigo-500 h-full transition-all duration-300"
             style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
           />
         </div>
@@ -114,63 +126,93 @@ export default function FlashcardsModal({ note, isOpen, onClose }) {
         {/* Flip Card Container */}
         <div
           onClick={() => setIsFlipped(!isFlipped)}
-          className="my-6 min-h-[260px] p-8 rounded-2xl border-2 border-dashed border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-purple-500/5 hover:border-teal-500 cursor-pointer transition-all flex flex-col justify-between select-none shadow-inner"
+          className="my-5 min-h-[260px] p-6 sm:p-8 rounded-2xl border-2 border-dashed border-teal-500/40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 hover:border-teal-400 cursor-pointer transition-all flex flex-col justify-between select-none shadow-2xl relative group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-teal-500/20 text-teal-700 dark:text-teal-300">
-              {isFlipped ? 'Answer / Explanation' : 'Concept / Question'}
+            <span
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                currentCard?.badgeColor || 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+              }`}
+            >
+              {currentCard?.badge || 'CONCEPT'}
             </span>
-            <div className="flex items-center space-x-1 text-xs text-slate-400">
+            <div className="flex items-center space-x-1 text-xs text-slate-400 group-hover:text-teal-300 transition">
               <RotateCw className="w-3.5 h-3.5" />
-              <span>Tap to flip</span>
+              <span>[Space] to flip</span>
             </div>
           </div>
 
           <div className="my-auto py-4 text-center">
             {isFlipped ? (
-              <p className="text-base sm:text-lg text-slate-800 dark:text-slate-100 leading-relaxed font-normal">
-                {currentCard.answer}
-              </p>
+              <div className="animate-fade-in text-slate-100 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                {currentCard?.back}
+              </div>
             ) : (
-              <h4 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                {currentCard.question}
+              <h4 className="animate-fade-in text-base sm:text-lg font-bold text-white tracking-tight leading-relaxed">
+                {currentCard?.front}
               </h4>
             )}
           </div>
 
-          <div className="text-center text-xs text-slate-400">
-            {isFlipped ? 'Tap to show question' : 'Tap to reveal answer'}
+          <div className="text-center text-[11px] text-slate-500">
+            {isFlipped ? 'Tap card or press Space to show front' : 'Tap card or press Space to reveal answer'}
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between pt-2">
+        {/* Spaced Repetition Rating Buttons */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button
-            onClick={handlePrev}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-200"
-            title="Previous Card"
+            onClick={() => rateCurrentCard('hard')}
+            className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+              currentRating === 'hard'
+                ? 'bg-rose-500 text-white border-rose-400'
+                : 'bg-slate-950 border-rose-500/30 text-rose-300 hover:bg-rose-500/10'
+            }`}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <span>🔴 Hard [1]</span>
           </button>
 
           <button
-            onClick={toggleKnown}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-medium text-sm transition ${
-              isCurrentKnown
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            onClick={() => rateCurrentCard('good')}
+            className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+              currentRating === 'good'
+                ? 'bg-amber-500 text-white border-amber-400'
+                : 'bg-slate-950 border-amber-500/30 text-amber-300 hover:bg-amber-500/10'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{isCurrentKnown ? 'Mastered!' : 'Mark as Mastered'}</span>
+            <span>🟡 Good [2]</span>
           </button>
+
+          <button
+            onClick={() => rateCurrentCard('easy')}
+            className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+              currentRating === 'easy'
+                ? 'bg-emerald-500 text-white border-emerald-400'
+                : 'bg-slate-950 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'
+            }`}
+          >
+            <span>🟢 Easy [3]</span>
+          </button>
+        </div>
+
+        {/* Navigation arrows */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
+          <button
+            onClick={handlePrev}
+            className="p-2 rounded-xl border border-slate-800 hover:bg-slate-800 hover:text-white transition flex items-center space-x-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Prev</span>
+          </button>
+
+          <span className="text-[10px] text-slate-500">Shortcuts: ← / → or J / K</span>
 
           <button
             onClick={handleNext}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-200"
-            title="Next Card"
+            className="p-2 rounded-xl border border-slate-800 hover:bg-slate-800 hover:text-white transition flex items-center space-x-1"
           >
-            <ChevronRight className="w-5 h-5" />
+            <span>Next</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

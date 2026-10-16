@@ -26,6 +26,7 @@ import {
 
 export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) {
   const {
+    setSelectedNoteId,
     setIsSearchOpen,
     setIsEditorOpen,
     setEditingNote,
@@ -43,7 +44,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
     notes
   } = useNotes();
 
-  const { isUnlocked, lockVault, setIsPinModalOpen, requireAuth } = useSecurity();
+  const { isUnlocked, lockVault, handleLogoTap, requireAuth } = useSecurity();
   const { theme, cycleTheme } = useTheme();
 
   const handleCreateNew = () => {
@@ -63,7 +64,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
   return (
     <header className="sticky top-0 z-40 w-full shrink-0 backdrop-blur-xl bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        {/* Left: Mobile Menu Toggle & Brand Logo */}
+        {/* Left: Mobile Menu Toggle & Brand Logo with Stealth Tap */}
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -73,21 +74,28 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
+          <div
+            onClick={() => {
+              setSelectedNoteId(null);
+              handleLogoTap();
+            }}
+            className="flex items-center space-x-2.5 cursor-pointer select-none group"
+            title="Notes Vault (Click to go Home | 5x Tap for Admin Unlock)"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
               <BookMarked className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                  Nexus<span className="text-teal-500">Notes</span>
+                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white group-hover:text-teal-400 transition-colors">
+                  Notes<span className="text-teal-500">Vault</span>
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
                   v2.0
                 </span>
               </div>
               <p className="hidden sm:block text-[10px] text-slate-400 font-medium">
-                Futuristic Personal Knowledge Base
+                Personal Knowledge & Placement Vault
               </p>
             </div>
           </div>
@@ -139,27 +147,6 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
                 : 'Local / Offline'}
             </span>
           </button>
-
-          {/* Master Vault Lock / Unlock Guard Toggle */}
-          {isUnlocked ? (
-            <button
-              onClick={lockVault}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-mono bg-teal-500/10 hover:bg-rose-500/15 text-teal-400 hover:text-rose-400 border border-teal-500/30 hover:border-rose-500/30 transition shrink-0"
-              title="Vault Unlocked (Admin Mode) - Click to Lock into Read-Only Mode"
-            >
-              <Unlock className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Admin Mode</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsPinModalOpen(true)}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-mono bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition shrink-0 animate-pulse"
-              title="Vault Locked (Read-Only Mode) - Click to Unlock with Master PIN"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Read-Only</span>
-            </button>
-          )}
 
           {/* Neural Quiz Arena Button */}
           <button

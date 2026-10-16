@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNotes } from '../../context/NotesContext';
 import { useSecurity } from '../../context/SecurityContext';
 import { StorageService } from '../../services/storageService';
@@ -6,6 +6,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 import TableOfContents from './TableOfContents';
 import ZenReaderModal from './ZenReaderModal';
 import FlashcardsModal from './FlashcardsModal';
+import DashboardHome from '../home/DashboardHome';
 import {
   Clock,
   Bookmark,
@@ -18,14 +19,14 @@ import {
   Edit3,
   Trash2,
   CheckCircle,
-  AlertCircle,
-  HelpCircle,
+  CheckCircle2,
   Share2,
   Calendar,
   Bot,
   ChevronRight,
   Folder,
-  Brain
+  Brain,
+  Home
 } from 'lucide-react';
 
 export default function NoteReader() {
@@ -49,7 +50,9 @@ export default function NoteReader() {
     setIsFolderModalOpen,
     setIsUploadOpen,
     openQuizForNote,
-    setIsQuizModalOpen
+    setIsQuizModalOpen,
+    noteChecklists,
+    toggleChecklistItem
   } = useNotes();
 
   const { requireAuth } = useSecurity();
@@ -65,101 +68,31 @@ export default function NoteReader() {
     }
   }, [activeNote?.id]);
 
+  // Compute checklist progress for active note
+  const taskStats = useMemo(() => {
+    if (!activeNote || !activeNote.content) return { total: 0, completed: 0, percent: 0 };
+    const matches = activeNote.content.match(/^[-*]\s+\[([ xX])\]/gm) || [];
+    if (matches.length === 0) return { total: 0, completed: 0, percent: 0 };
+
+    const savedChecks = (noteChecklists && noteChecklists[activeNote.id]) || {};
+    let completed = 0;
+    matches.forEach((m, idx) => {
+      const isSaved = savedChecks[idx];
+      const isMdChecked = m.includes('[x]') || m.includes('[X]');
+      if (isSaved !== undefined ? isSaved : isMdChecked) {
+        completed++;
+      }
+    });
+    return {
+      total: matches.length,
+      completed,
+      percent: Math.round((completed / matches.length) * 100)
+    };
+  }, [activeNote, noteChecklists]);
+
+  // If no note is selected, render the high-yield Dashboard Home!
   if (!activeNote) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 text-center min-h-[75vh] animate-fade-in">
-        <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-teal-500/20 to-indigo-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 mb-6 neon-glow-teal">
-          <Sparkles className="w-10 h-10 animate-pulse" />
-        </div>
-        
-        <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Your Clean Canvas is Ready 🚀
-        </h3>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-lg text-sm sm:text-base leading-relaxed">
-          All default notes have been removed. You have complete freedom to manually add your subjects, nested branches, and notes!
-        </p>
-
-        {/* Quick Action Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 w-full max-w-2xl text-left">
-          {/* Action 1: Create Note */}
-          <div
-            onClick={() => {
-              requireAuth(() => {
-                setEditingNote({ title: '', content: '# ' });
-                setIsEditorOpen(true);
-              });
-            }}
-            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Edit3 className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-              + New Note
-            </h4>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Write notes from scratch in Markdown.
-            </p>
-          </div>
-
-          {/* Action 2: Create Folder */}
-          <div
-            onClick={() => {
-              requireAuth(() => {
-                setIsFolderModalOpen(true);
-              });
-            }}
-            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Folder className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-              📁 New Branch
-            </h4>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Organize subject & subfolder tree.
-            </p>
-          </div>
-
-          {/* Action 3: Upload Files */}
-          <div
-            onClick={() => {
-              requireAuth(() => {
-                setIsUploadOpen(true);
-              });
-            }}
-            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Download className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-              📂 Upload .md
-            </h4>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Drag-and-drop existing Markdown files.
-            </p>
-          </div>
-
-          {/* Action 4: Quiz Arena */}
-          <div
-            onClick={() => setIsQuizModalOpen(true)}
-            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all shadow-sm group"
-          >
-            <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Brain className="w-4 h-4" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-              🧠 Quiz Arena
-            </h4>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Generate test & track your scores.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardHome />;
   }
 
   // Text-to-speech toggle
@@ -237,9 +170,19 @@ export default function NoteReader() {
         {/* Breadcrumb & Metadata Header */}
         <div className="pb-6 border-b border-slate-200 dark:border-slate-800/80">
           {/* Interactive Branch Breadcrumbs */}
-          {activeNote.folderId && (
-            <nav className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-3 overflow-x-auto pb-1">
-              {getFolderPath(activeNote.folderId).map((f, i, arr) => (
+          <nav className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-3 overflow-x-auto pb-1">
+            <button
+              onClick={() => setSelectedNoteId(null)}
+              className="hover:text-teal-400 transition flex items-center space-x-1 shrink-0 font-semibold"
+              title="Return to Dashboard Home"
+            >
+              <Home className="w-3.5 h-3.5 text-teal-400" />
+              <span>Vault</span>
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+
+            {activeNote.folderId &&
+              getFolderPath(activeNote.folderId).map((f) => (
                 <React.Fragment key={f.id}>
                   <button
                     onClick={() => {
@@ -254,9 +197,8 @@ export default function NoteReader() {
                   <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                 </React.Fragment>
               ))}
-              <span className="text-slate-200 truncate font-medium">{activeNote.title}</span>
-            </nav>
-          )}
+            <span className="text-slate-200 truncate font-medium">{activeNote.title}</span>
+          </nav>
 
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             {/* Category & Status Badges */}
@@ -388,6 +330,19 @@ export default function NoteReader() {
                 <Printer className="w-4 h-4" />
               </button>
 
+              {/* Share / Copy Link */}
+              <button
+                onClick={handleShare}
+                className={`p-2 rounded-xl transition ${
+                  copiedLink
+                    ? 'text-emerald-500 bg-emerald-500/15'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+                title={copiedLink ? 'Link Copied!' : 'Copy Direct Note Link'}
+              >
+                {copiedLink ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+              </button>
+
               {/* Delete */}
               <button
                 onClick={() => {
@@ -432,9 +387,35 @@ export default function NoteReader() {
           )}
         </div>
 
+        {/* Checklist Tasks Progress Bar */}
+        {taskStats.total > 0 && (
+          <div className="my-5 p-4 rounded-2xl bg-teal-500/10 border border-teal-500/25 flex flex-col space-y-2 shadow-sm">
+            <div className="flex items-center justify-between text-xs font-mono text-teal-300">
+              <span className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                <span className="font-bold uppercase tracking-wider">Note Checklist Progress</span>
+              </span>
+              <span className="font-bold">
+                {taskStats.completed} / {taskStats.total} done ({taskStats.percent}%)
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-800/80 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-300"
+                style={{ width: `${taskStats.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Note Body (Markdown Content) */}
         <div className="py-6">
-          <MarkdownRenderer content={activeNote.content} />
+          <MarkdownRenderer
+            content={activeNote.content}
+            noteId={activeNote.id}
+            noteChecklists={noteChecklists}
+            toggleChecklistItem={toggleChecklistItem}
+          />
         </div>
 
         {/* Previous & Next Navigation */}

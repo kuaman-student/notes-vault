@@ -148,6 +148,21 @@ export default function MarkdownRenderer({ content }) {
               <ExternalLink className="w-3 h-3 ml-0.5 inline" />
             </a>
           ),
+          input: ({ type, checked, ...props }) => {
+            if (type === 'checkbox') {
+              return (
+                <input
+                  type="checkbox"
+                  defaultChecked={checked}
+                  className="w-4 h-4 rounded text-teal-500 bg-slate-900 border-slate-700 focus:ring-teal-500 mr-2 cursor-pointer transition accent-teal-500 inline-block align-middle"
+                  disabled={false}
+                  onClick={(e) => e.stopPropagation()}
+                  {...props}
+                />
+              );
+            }
+            return <input type={type} {...props} />;
+          },
         }}
       >
         {content}

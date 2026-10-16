@@ -16,7 +16,8 @@ import {
   ChevronsUp,
   GitBranch,
   Filter,
-  Brain
+  Brain,
+  Home
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -96,6 +97,25 @@ export default function Sidebar({ isOpen, onClose }) {
       >
         {/* Top Header Row with View Mode Switcher and Quick Actions */}
         <div className="p-3 border-b border-slate-800/80 bg-slate-950/40">
+          {/* Vault Dashboard Home Button */}
+          <button
+            onClick={() => {
+              setSelectedNoteId(null);
+              if (window.innerWidth < 1024) onClose();
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono font-bold transition mb-2.5 ${
+              selectedNoteId === null
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
+                : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-300 border border-slate-800/80'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Home className="w-4 h-4 text-teal-400" />
+              <span>Vault Dashboard</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-normal">Home</span>
+          </button>
+
           <div className="flex items-center justify-between mb-2">
             {/* View Mode Toggle: Tree (Branches) vs Filters */}
             <div className="flex items-center space-x-1 bg-slate-900/90 rounded-xl p-1 text-xs">

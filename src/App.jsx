@@ -15,7 +15,9 @@ import AICopilotModal from './components/ai/AICopilotModal';
 import PomodoroTimerModal from './components/timer/PomodoroTimerModal';
 import ScratchpadDrawer from './components/scratchpad/ScratchpadDrawer';
 import CreateFolderModal from './components/folders/CreateFolderModal';
-import VaultPinModal from './components/security/VaultPinModal';
+import SecretPasscodeModal from './components/security/SecretPasscodeModal';
+import AdminFloatingPill from './components/admin/AdminFloatingPill';
+import AdminStudioModal from './components/admin/AdminStudioModal';
 import CloudSyncModal from './components/database/CloudSyncModal';
 import QuizArenaModal from './components/quiz/QuizArenaModal';
 
@@ -48,7 +50,12 @@ function MainLayout() {
     isLoading
   } = useNotes();
 
-  const { isPinModalOpen, setIsPinModalOpen } = useSecurity();
+  const {
+    isSecretModalOpen,
+    setIsSecretModalOpen,
+    isAdminStudioOpen,
+    setIsAdminStudioOpen
+  } = useSecurity();
 
   if (isLoading) {
     return (
@@ -129,10 +136,19 @@ function MainLayout() {
         onClose={() => setIsPomodoroOpen(false)}
       />
 
-      {/* Vault Master PIN Security Modal */}
-      <VaultPinModal
-        isOpen={isPinModalOpen}
-        onClose={() => setIsPinModalOpen(false)}
+      {/* Stealth Master Passcode Security Modal */}
+      <SecretPasscodeModal
+        isOpen={isSecretModalOpen}
+        onClose={() => setIsSecretModalOpen(false)}
+      />
+
+      {/* Admin Floating HUD Pill (only appears when unlocked) */}
+      <AdminFloatingPill />
+
+      {/* Pro Admin Studio Modal */}
+      <AdminStudioModal
+        isOpen={isAdminStudioOpen}
+        onClose={() => setIsAdminStudioOpen(false)}
       />
 
       {/* Firebase Cloud Sync & Security Rules Modal */}

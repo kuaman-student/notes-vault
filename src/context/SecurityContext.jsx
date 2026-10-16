@@ -1,87 +1,136 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const SecurityContext = createContext();
 
-const PIN_STORAGE_KEY = 'nexus_vault_master_pin';
-const UNLOCKED_SESSION_KEY = 'nexus_vault_is_unlocked';
-const STEALTH_MODE_KEY = 'nexus_vault_stealth_mode';
-const DEFAULT_PIN = '2026';
+const HASH_STORAGE_KEY = 'nexus_vault_master_hash_v2';
+const UNLOCKED_SESSION_KEY = 'nexus_vault_is_unlocked_v2';
+
+// SHA-256 hash of user's secret passcode: "aman@vault26"
+export const DEFAULT_PASSCODE_HASH = '46a399f4f39798dbc8d9351c157d6d757c19c4b4d1022ec5bbe00b86434b8711';
+
+// Fast native Web Crypto SHA-256 helper
+export async function computeSHA256(str) {
+  try {
+    if (window.crypto && window.crypto.subtle) {
+      const buffer = new TextEncoder().encode(str);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (err) {
+    console.warn('Web Crypto unavailable, fallback in use', err);
+  }
+  // Simple fallback hash if crypto.subtle is restricted
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return String(hash);
+}
 
 export function SecurityProvider({ children }) {
-  const [masterPin, setMasterPin] = useState(() => {
-    return localStorage.getItem(PIN_STORAGE_KEY) || DEFAULT_PIN;
+  const [passcodeHash, setPasscodeHash] = useState(() => {
+    return localStorage.getItem(HASH_STORAGE_KEY) || DEFAULT_PASSCODE_HASH;
   });
 
+  // Always FALSE by default for security - only true if authenticated in this session
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    // Default unlocked on local dev, but respects locked state
-    const saved = sessionStorage.getItem(UNLOCKED_SESSION_KEY);
-    return saved !== null ? saved === 'true' : true;
+    return sessionStorage.getItem(UNLOCKED_SESSION_KEY) === 'true';
   });
 
-  const [isStealthMode, setIsStealthMode] = useState(() => {
-    return localStorage.getItem(STEALTH_MODE_KEY) === 'true';
-  });
-
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isSecretModalOpen, setIsSecretModalOpen] = useState(false);
+  const [isAdminStudioOpen, setIsAdminStudioOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [pinError, setPinError] = useState('');
+  const [authError, setAuthError] = useState('');
 
-  // Persist unlock state across tabs in this session
+  // 5-tap mobile secret trigger state
+  const tapTimesRef = useRef([]);
+
+  // Sync session state
   useEffect(() => {
     sessionStorage.setItem(UNLOCKED_SESSION_KEY, String(isUnlocked));
   }, [isUnlocked]);
 
+  // Global Keyboard Secret Trigger: Ctrl + Shift + L (or Cmd + Shift + L)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
+        e.preventDefault();
+        setAuthError('');
+        setIsSecretModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Mobile / Touch Secret Trigger: 5 rapid taps on logo within 2 seconds
+  const handleLogoTap = () => {
+    const now = Date.now();
+    // Keep only taps within the last 2000ms
+    tapTimesRef.current = [...tapTimesRef.current.filter((t) => now - t < 2000), now];
+
+    if (tapTimesRef.current.length >= 5) {
+      tapTimesRef.current = [];
+      setAuthError('');
+      setIsSecretModalOpen(true);
+    }
+  };
+
   const lockVault = () => {
     setIsUnlocked(false);
+    setIsAdminStudioOpen(false);
     sessionStorage.setItem(UNLOCKED_SESSION_KEY, 'false');
   };
 
-  const unlockVault = (enteredPin) => {
-    if (enteredPin === masterPin) {
+  const unlockVault = async (enteredPasscode) => {
+    if (!enteredPasscode) {
+      setAuthError('Please enter your Secret Passcode.');
+      return false;
+    }
+
+    const enteredHash = await computeSHA256(enteredPasscode.trim());
+
+    if (enteredHash === passcodeHash) {
       setIsUnlocked(true);
       sessionStorage.setItem(UNLOCKED_SESSION_KEY, 'true');
-      setIsPinModalOpen(false);
-      setPinError('');
+      setIsSecretModalOpen(false);
+      setAuthError('');
+
       if (pendingAction && typeof pendingAction === 'function') {
         pendingAction();
         setPendingAction(null);
       }
       return true;
     } else {
-      setPinError('Incorrect Master Passcode. Access denied.');
+      setAuthError('Access Denied: Invalid Master Passcode.');
       return false;
     }
   };
 
-  const updatePin = (oldPin, newPin) => {
-    if (oldPin !== masterPin) {
-      return { success: false, error: 'Current PIN is incorrect.' };
+  const updatePasscode = async (currentPasscode, newPasscode) => {
+    const currentHash = await computeSHA256(currentPasscode.trim());
+    if (currentHash !== passcodeHash) {
+      return { success: false, error: 'Current passcode is incorrect.' };
     }
-    if (!newPin || newPin.length < 4) {
-      return { success: false, error: 'New PIN must be at least 4 digits.' };
+    if (!newPasscode || newPasscode.length < 6) {
+      return { success: false, error: 'New passcode must be at least 6 characters.' };
     }
-    setMasterPin(newPin);
-    localStorage.setItem(PIN_STORAGE_KEY, newPin);
+    const newHash = await computeSHA256(newPasscode.trim());
+    setPasscodeHash(newHash);
+    localStorage.setItem(HASH_STORAGE_KEY, newHash);
     return { success: true };
   };
 
-  const toggleStealthMode = () => {
-    const nextVal = !isStealthMode;
-    setIsStealthMode(nextVal);
-    localStorage.setItem(STEALTH_MODE_KEY, String(nextVal));
-    if (nextVal) {
-      lockVault();
-    }
-  };
-
-  // Helper: Guard an action with Master PIN check
+  // Guard action: runs if unlocked, else prompts for secret authentication
   const requireAuth = (action) => {
     if (isUnlocked) {
       action();
     } else {
       setPendingAction(() => action);
-      setPinError('');
-      setIsPinModalOpen(true);
+      setAuthError('');
+      setIsSecretModalOpen(true);
     }
   };
 
@@ -89,17 +138,17 @@ export function SecurityProvider({ children }) {
     <SecurityContext.Provider
       value={{
         isUnlocked,
-        isStealthMode,
-        masterPin,
         lockVault,
         unlockVault,
-        updatePin,
-        toggleStealthMode,
+        updatePasscode,
         requireAuth,
-        isPinModalOpen,
-        setIsPinModalOpen,
-        pinError,
-        setPinError
+        isSecretModalOpen,
+        setIsSecretModalOpen,
+        isAdminStudioOpen,
+        setIsAdminStudioOpen,
+        authError,
+        setAuthError,
+        handleLogoTap
       }}
     >
       {children}

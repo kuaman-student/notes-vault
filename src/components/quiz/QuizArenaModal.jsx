@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNotes } from '../../context/NotesContext';
 import { useSecurity } from '../../context/SecurityContext';
-import { QuizGenerator } from '../../services/quizGenerator';
+import { SmartQuizEngine } from '../../services/smartQuizEngine';
 import confetti from 'canvas-confetti';
 import {
   Brain,
@@ -126,7 +126,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
       return;
     }
 
-    const generated = QuizGenerator.generateQuiz(notesToUse, {
+    const generated = SmartQuizEngine.generateSmartQuiz(notesToUse, {
       questionCount,
       difficulty
     });

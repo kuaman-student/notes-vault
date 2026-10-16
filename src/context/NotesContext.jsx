@@ -116,6 +116,20 @@ export function NotesProvider({ children }) {
 
   const [editingNote, setEditingNote] = useState(null);
 
+  // Folder tree expansion normalizer:
+  // Root folders (no parentId) -> opened (true) by default so top branches show.
+  // Deep subfolders (has parentId) -> closed (false) by default so notes aren't flooded!
+  const applyDefaultFolderExpansion = (foldersList, prevFolders = []) => {
+    if (!Array.isArray(foldersList)) return [];
+    const prevMap = new Map((prevFolders || []).map((f) => [f.id, f.isExpanded]));
+    return foldersList.map((f) => {
+      if (prevMap.has(f.id) && prevMap.get(f.id) !== undefined) {
+        return { ...f, isExpanded: prevMap.get(f.id) };
+      }
+      return { ...f, isExpanded: !f.parentId };
+    });
+  };
+
   // Load notes, folders & categories on mount with Firebase Cloud sync
   useEffect(() => {
     let unsubscribeNotes = () => {};
@@ -140,7 +154,7 @@ export function NotesProvider({ children }) {
         ]);
 
         setCategories(loadedCats.length > 0 ? loadedCats : DEFAULT_CATEGORIES);
-        setFolders(loadedFolders || []);
+        setFolders(applyDefaultFolderExpansion(loadedFolders));
         setNotes(loadedNotes || []);
         setQuizzes(loadedQuizzes || []);
 
@@ -168,7 +182,7 @@ export function NotesProvider({ children }) {
             }
           }
           if (cloudFolders && cloudFolders.length > 0) {
-            setFolders(cloudFolders);
+            setFolders((prev) => applyDefaultFolderExpansion(cloudFolders, prev));
             await StorageService.saveAllFolders(cloudFolders);
           }
           if (cloudCategories && cloudCategories.length > 0) {
@@ -196,7 +210,7 @@ export function NotesProvider({ children }) {
 
         unsubscribeFolders = FirebaseService.subscribeToFolders((liveFolders) => {
           if (liveFolders && liveFolders.length > 0) {
-            setFolders(liveFolders);
+            setFolders((prev) => applyDefaultFolderExpansion(liveFolders, prev));
             StorageService.saveAllFolders(liveFolders);
           }
         });
@@ -365,7 +379,13 @@ export function NotesProvider({ children }) {
 
   const toggleFolderExpansion = (folderId) => {
     setFolders((prev) =>
-      prev.map((f) => (f.id === folderId ? { ...f, isExpanded: !f.isExpanded } : f))
+      prev.map((f) => {
+        if (f.id === folderId) {
+          const currentlyExpanded = f.isExpanded !== undefined ? f.isExpanded : !f.parentId;
+          return { ...f, isExpanded: !currentlyExpanded };
+        }
+        return f;
+      })
     );
   };
 

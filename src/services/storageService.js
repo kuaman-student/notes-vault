@@ -99,7 +99,7 @@ export const StorageService = {
       parentId: newFolder.parentId || null, // null for root folder, id for subfolder
       icon: newFolder.icon || (newFolder.parentId ? '📂' : '📁'),
       color: newFolder.color || '#14b8a6',
-      isExpanded: true,
+      isExpanded: !newFolder.parentId, // true for root folder, false for subfolder
       createdAt: new Date().toISOString()
     };
     const updated = [...folders, folderObj];
@@ -282,9 +282,15 @@ export const StorageService = {
     const existingIndex = notes.findIndex((n) => n.id === note.id);
     let updatedNotes;
 
+    const nowIso = new Date().toISOString();
     if (existingIndex >= 0) {
       updatedNotes = [...notes];
-      updatedNotes[existingIndex] = { ...note, lastUpdated: new Date().toISOString().slice(0, 10) };
+      updatedNotes[existingIndex] = {
+        ...note,
+        updatedAt: nowIso,
+        lastUpdated: nowIso.slice(0, 10),
+        timestamp: Date.now()
+      };
     } else {
       updatedNotes = [
         {
@@ -292,7 +298,10 @@ export const StorageService = {
           id: note.id || `note-${Date.now()}`,
           folderId: note.folderId !== undefined ? note.folderId : null,
           category: note.category || 'General',
-          lastUpdated: new Date().toISOString().slice(0, 10)
+          createdAt: note.createdAt || nowIso,
+          updatedAt: nowIso,
+          lastUpdated: nowIso.slice(0, 10),
+          timestamp: Date.now()
         },
         ...notes
       ];

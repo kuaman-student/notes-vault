@@ -21,6 +21,100 @@ import {
   Timer
 } from 'lucide-react';
 
+// High-precision timestamp extractor supporting Firestore Timestamps, ISO strings, and epoch numbers
+export function getNoteTimestamp(note) {
+  if (!note) return 0;
+
+  // 1. Check updatedAt
+  if (note.updatedAt) {
+    if (typeof note.updatedAt === 'string') {
+      const parsed = Date.parse(note.updatedAt);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (note.updatedAt.toDate && typeof note.updatedAt.toDate === 'function') {
+      return note.updatedAt.toDate().getTime();
+    }
+    if (typeof note.updatedAt.seconds === 'number') {
+      return note.updatedAt.seconds * 1000;
+    }
+  }
+
+  // 2. Check cloudSyncedAt
+  if (note.cloudSyncedAt) {
+    if (typeof note.cloudSyncedAt === 'string') {
+      const parsed = Date.parse(note.cloudSyncedAt);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (note.cloudSyncedAt.toDate && typeof note.cloudSyncedAt.toDate === 'function') {
+      return note.cloudSyncedAt.toDate().getTime();
+    }
+    if (typeof note.cloudSyncedAt.seconds === 'number') {
+      return note.cloudSyncedAt.seconds * 1000;
+    }
+  }
+
+  // 3. Check createdAt
+  if (note.createdAt) {
+    if (typeof note.createdAt === 'string') {
+      const parsed = Date.parse(note.createdAt);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (note.createdAt.toDate && typeof note.createdAt.toDate === 'function') {
+      return note.createdAt.toDate().getTime();
+    }
+    if (typeof note.createdAt.seconds === 'number') {
+      return note.createdAt.seconds * 1000;
+    }
+  }
+
+  // 4. Check explicit timestamp
+  if (typeof note.timestamp === 'number') {
+    return note.timestamp;
+  }
+
+  // 5. Check lastUpdated (YYYY-MM-DD string)
+  if (note.lastUpdated && typeof note.lastUpdated === 'string') {
+    const parsed = Date.parse(note.lastUpdated);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  // 6. Check note.id if it contains timestamp (e.g. note-1728234900000)
+  if (note.id && typeof note.id === 'string') {
+    const match = note.id.match(/\d{10,13}/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > 1000000000) {
+        return num < 10000000000 ? num * 1000 : num;
+      }
+    }
+  }
+
+  return 0;
+}
+
+export function formatNoteTimeAgo(note) {
+  const ts = getNoteTimestamp(note);
+  if (!ts) return note.lastUpdated || 'Recently';
+
+  const diffMs = Date.now() - ts;
+  if (diffMs < 0) return 'Just now';
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return new Date(ts).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
 export default function DashboardHome() {
   const {
     notes,
@@ -63,19 +157,21 @@ export default function DashboardHome() {
     return notes.filter((n) => n.isBookmarked);
   }, [notes]);
 
-  // Recent notes (sorted by last updated or slice)
+  // Recent notes - precisely sorted by Firestore latest timestamp (descending)
   const recentNotes = useMemo(() => {
-    return [...notes].slice(0, 6);
+    return [...notes]
+      .sort((a, b) => getNoteTimestamp(b) - getNoteTimestamp(a))
+      .slice(0, 6);
   }, [notes]);
 
-  // Quick Resume Note
+  // Quick Resume Note - prefers last viewed, then newest updated note
   const resumeNote = useMemo(() => {
     if (lastViewedNoteId) {
       const found = notes.find((n) => n.id === lastViewedNoteId);
       if (found) return found;
     }
-    return starredNotes[0] || notes[0] || null;
-  }, [notes, lastViewedNoteId, starredNotes]);
+    return recentNotes[0] || starredNotes[0] || notes[0] || null;
+  }, [notes, lastViewedNoteId, recentNotes, starredNotes]);
 
   // Total checklist tasks completed
   const totalChecklistsCompleted = useMemo(() => {
@@ -286,7 +382,9 @@ export default function DashboardHome() {
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20">
                     {note.category}
                   </span>
-                  <span className="text-[10px] text-slate-500">{note.readTime || '5m'}</span>
+                  <span className="text-[10px] text-teal-400 font-medium font-mono" title={note.lastUpdated || 'Recent'}>
+                    {formatNoteTimeAgo(note)}
+                  </span>
                 </div>
                 <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-teal-300 transition">
                   {note.title}

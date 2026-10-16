@@ -93,9 +93,13 @@ export const FirebaseService = {
       const firestore = this.getDb();
       if (!firestore || !note.id) return;
       const docRef = doc(firestore, 'notes', note.id);
+      const nowIso = new Date().toISOString();
       await setDoc(docRef, {
         ...note,
-        cloudSyncedAt: new Date().toISOString()
+        createdAt: note.createdAt || nowIso,
+        updatedAt: note.updatedAt || nowIso,
+        timestamp: note.timestamp || Date.now(),
+        cloudSyncedAt: nowIso
       }, { merge: true });
     } catch (err) {
       console.warn('Firebase saveNote failed:', err);

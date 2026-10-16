@@ -5,7 +5,7 @@ const SecurityContext = createContext();
 const HASH_STORAGE_KEY = 'nexus_vault_master_hash_v2';
 const UNLOCKED_SESSION_KEY = 'nexus_vault_is_unlocked_v2';
 
-// SHA-256 hash of user's secret passcode: "aman@vault26"
+// Master cryptographic SHA-256 authorization hash
 export const DEFAULT_PASSCODE_HASH = '46a399f4f39798dbc8d9351c157d6d757c19c4b4d1022ec5bbe00b86434b8711';
 
 // Fast native Web Crypto SHA-256 helper

@@ -20,10 +20,21 @@ export function NotesProvider({ children }) {
   const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
   const [notes, setNotes] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [folders, setFolders] = useState(INITIAL_FOLDERS);
+  const [rawFolders, setRawFolders] = useState(INITIAL_FOLDERS);
+  const [expandedFolderIds, setExpandedFolderIds] = useState(() => new Set());
   const [quizzes, setQuizzes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState('connecting'); // 'synced', 'syncing', 'error'
+
+  // Decoupled Folder Expansion State:
+  // Folders default to closed so only root folders are visible.
+  // Creating or deleting folders will NEVER cause other folders to auto-expand!
+  const folders = useMemo(() => {
+    return rawFolders.map((f) => ({
+      ...f,
+      isExpanded: expandedFolderIds.has(f.id)
+    }));
+  }, [rawFolders, expandedFolderIds]);
 
   // View Mode: 'tree' (branch-wise folder tree matching screenshot) or 'list'
   const [sidebarViewMode, setSidebarViewMode] = useState('tree');
@@ -127,20 +138,6 @@ export function NotesProvider({ children }) {
 
   const [editingNote, setEditingNote] = useState(null);
 
-  // Folder tree expansion normalizer:
-  // All folders default to collapsed (false) so only top-level root folder headers are visible.
-  // No subfiles or subfolders are open by default.
-  const applyDefaultFolderExpansion = (foldersList, prevFolders = []) => {
-    if (!Array.isArray(foldersList)) return [];
-    const prevMap = new Map((prevFolders || []).map((f) => [f.id, f.isExpanded]));
-    return foldersList.map((f) => {
-      if (prevMap.has(f.id) && prevMap.get(f.id) !== undefined) {
-        return { ...f, isExpanded: prevMap.get(f.id) };
-      }
-      return { ...f, isExpanded: false };
-    });
-  };
-
   // Load notes, folders & categories on mount with Firebase Cloud sync
   useEffect(() => {
     let unsubscribeNotes = () => {};
@@ -164,7 +161,7 @@ export function NotesProvider({ children }) {
         ]);
 
         setCategories(loadedCats.length > 0 ? loadedCats : DEFAULT_CATEGORIES);
-        setFolders(applyDefaultFolderExpansion(loadedFolders));
+        setRawFolders(loadedFolders || []);
         setNotes(loadedNotes || []);
         if (!user) {
           setQuizzes(loadedQuizzes || []);
@@ -193,7 +190,7 @@ export function NotesProvider({ children }) {
             }
           }
           if (cloudFolders && cloudFolders.length > 0) {
-            setFolders((prev) => applyDefaultFolderExpansion(cloudFolders, prev));
+            setRawFolders(cloudFolders);
             await StorageService.saveAllFolders(cloudFolders);
           }
           if (cloudCategories && cloudCategories.length > 0) {
@@ -217,7 +214,7 @@ export function NotesProvider({ children }) {
 
         unsubscribeFolders = FirebaseService.subscribeToFolders((liveFolders) => {
           if (liveFolders && liveFolders.length > 0) {
-            setFolders((prev) => applyDefaultFolderExpansion(liveFolders, prev));
+            setRawFolders(liveFolders);
             StorageService.saveAllFolders(liveFolders);
           }
         });
@@ -393,12 +390,12 @@ export function NotesProvider({ children }) {
         await StorageService.saveAllNotes(cloudNotes);
       }
 
-      if (cloudFolders.length === 0 && folders.length > 0) {
-        for (const f of folders) {
+      if (cloudFolders.length === 0 && rawFolders.length > 0) {
+        for (const f of rawFolders) {
           await FirebaseService.saveFolder(f);
         }
       } else if (cloudFolders.length > 0) {
-        setFolders(cloudFolders);
+        setRawFolders(cloudFolders);
         await StorageService.saveAllFolders(cloudFolders);
       }
 
@@ -413,8 +410,13 @@ export function NotesProvider({ children }) {
   // --- FOLDERS HANDLERS ---
   const createFolder = async (folderData) => {
     const updated = await StorageService.createFolder(folderData);
-    setFolders(updated);
+    setRawFolders(updated);
     setIsFolderModalOpen(false);
+
+    // If subfolder created, expand only its parent folder so user sees it. Root folders remain closed!
+    if (folderData.parentId) {
+      setExpandedFolderIds((prev) => new Set([...prev, folderData.parentId]));
+    }
 
     // Sync newly created folder to Firebase Cloud
     const createdFolder = updated[updated.length - 1];
@@ -427,9 +429,16 @@ export function NotesProvider({ children }) {
 
   const deleteFolder = async (folderId) => {
     const { updatedFolders, updatedNotes } = await StorageService.deleteFolder(folderId);
-    setFolders(updatedFolders);
+    setRawFolders(updatedFolders);
     setNotes(updatedNotes);
     if (selectedFolderId === folderId) setSelectedFolderId(null);
+
+    // Remove deleted folder from expanded UI state
+    setExpandedFolderIds((prev) => {
+      const next = new Set(prev);
+      next.delete(folderId);
+      return next;
+    });
 
     // Delete in Firebase Cloud
     FirebaseService.deleteFolder(folderId);
@@ -437,7 +446,7 @@ export function NotesProvider({ children }) {
 
   const updateFolder = async (folderId, data) => {
     const updated = await StorageService.updateFolder(folderId, data);
-    setFolders(updated);
+    setRawFolders(updated);
     const target = updated.find((f) => f.id === folderId);
     if (target) {
       FirebaseService.saveFolder(target);
@@ -445,22 +454,23 @@ export function NotesProvider({ children }) {
   };
 
   const toggleFolderExpansion = (folderId) => {
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === folderId) {
-          return { ...f, isExpanded: !f.isExpanded };
-        }
-        return f;
-      })
-    );
+    setExpandedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
   };
 
   const expandAllFolders = () => {
-    setFolders((prev) => prev.map((f) => ({ ...f, isExpanded: true })));
+    setExpandedFolderIds(new Set(rawFolders.map((f) => f.id)));
   };
 
   const collapseAllFolders = () => {
-    setFolders((prev) => prev.map((f) => ({ ...f, isExpanded: false })));
+    setExpandedFolderIds(new Set());
   };
 
   // Helper: Get Breadcrumb path for a folderId
@@ -640,7 +650,7 @@ export function NotesProvider({ children }) {
       setNotes(data.notes);
       if (data.folders && Array.isArray(data.folders)) {
         await StorageService.saveAllFolders(data.folders);
-        setFolders(data.folders);
+        setRawFolders(data.folders);
       }
       if (data.categories && Array.isArray(data.categories)) {
         await StorageService.saveAllCategories(data.categories);
@@ -671,12 +681,13 @@ export function NotesProvider({ children }) {
     for (const n of notes) {
       FirebaseService.deleteNote(n.id);
     }
-    for (const f of folders) {
+    for (const f of rawFolders) {
       FirebaseService.deleteFolder(f.id);
     }
     await StorageService.clearAllNotesAndFolders();
     setNotes([]);
-    setFolders([]);
+    setRawFolders([]);
+    setExpandedFolderIds(new Set());
     setSelectedNoteId(null);
   };
 

@@ -343,6 +343,41 @@ export const FirebaseService = {
     }
   },
 
+  // Fetch all doubts across vault
+  async fetchAllDoubts() {
+    try {
+      const firestore = this.getDb();
+      if (!firestore) return [];
+      const colRef = collection(firestore, 'doubts');
+      const snap = await getDocs(colRef);
+      const list = [];
+      snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+      return list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    } catch (err) {
+      console.warn('fetchAllDoubts notice:', err);
+      return [];
+    }
+  },
+
+  // Real-time listener for all doubts across vault (Admin Command Center)
+  subscribeToAllDoubts(callback) {
+    try {
+      const firestore = this.getDb();
+      if (!firestore) return () => {};
+      const colRef = collection(firestore, 'doubts');
+      return onSnapshot(colRef, (snap) => {
+        const list = [];
+        snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+        list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        callback(list);
+      }, (err) => {
+        console.warn('subscribeToAllDoubts error:', err);
+      });
+    } catch {
+      return () => {};
+    }
+  },
+
   // Post a new doubt
   async createDoubt(doubtData) {
     try {

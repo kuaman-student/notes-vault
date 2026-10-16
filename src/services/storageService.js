@@ -99,7 +99,7 @@ export const StorageService = {
       parentId: newFolder.parentId || null, // null for root folder, id for subfolder
       icon: newFolder.icon || (newFolder.parentId ? '📂' : '📁'),
       color: newFolder.color || '#14b8a6',
-      isExpanded: !newFolder.parentId, // true for root folder, false for subfolder
+      isExpanded: false,
       createdAt: new Date().toISOString()
     };
     const updated = [...folders, folderObj];

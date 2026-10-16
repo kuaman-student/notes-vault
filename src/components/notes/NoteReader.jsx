@@ -60,6 +60,7 @@ export default function NoteReader() {
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // Stop speech if note changes
   useEffect(() => {
@@ -67,6 +68,28 @@ export default function NoteReader() {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
     }
+  }, [activeNote?.id]);
+
+  // Track scroll position in main container for reading progress HUD
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = mainEl;
+      const totalScroll = scrollHeight - clientHeight;
+      if (totalScroll > 0) {
+        const progress = Math.min(100, Math.max(0, (scrollTop / totalScroll) * 100));
+        setScrollProgress(progress);
+      } else {
+        setScrollProgress(0);
+      }
+    };
+
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => mainEl.removeEventListener('scroll', handleScroll);
   }, [activeNote?.id]);
 
   // Compute checklist progress for active note
@@ -90,6 +113,19 @@ export default function NoteReader() {
       percent: Math.round((completed / matches.length) * 100)
     };
   }, [activeNote, noteChecklists]);
+
+  // Dynamic remaining reading time calculation
+  const totalReadMinutes = useMemo(() => {
+    if (!activeNote || !activeNote.content) return 1;
+    const words = activeNote.content.trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.ceil(words / 200));
+  }, [activeNote]);
+
+  const readingTimeLeft = useMemo(() => {
+    if (scrollProgress >= 95) return 'Completed! 🎉';
+    const remainingMinutes = Math.max(1, Math.ceil(totalReadMinutes * (1 - scrollProgress / 100)));
+    return `~${remainingMinutes}m left`;
+  }, [totalReadMinutes, scrollProgress]);
 
   // If no note is selected, render the high-yield Dashboard Home!
   if (!activeNote) {
@@ -165,7 +201,15 @@ export default function NoteReader() {
   const nextNote = currentIndex < notes.length - 1 ? notes[currentIndex + 1] : null;
 
   return (
-    <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+    <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in relative">
+      {/* Top Fixed Reading Progress HUD */}
+      <div className="fixed top-0 left-0 right-0 z-40 h-1 bg-slate-800/30 pointer-events-none no-print">
+        <div
+          className="h-full bg-gradient-to-r from-teal-400 via-indigo-500 to-purple-500 shadow-sm shadow-teal-500/50 transition-all duration-150 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {/* Main Content Article */}
       <article className="flex-1 min-w-0 max-w-4xl">
         {/* Breadcrumb & Metadata Header */}
@@ -234,6 +278,16 @@ export default function NoteReader() {
 
             {/* Quick Action Buttons */}
             <div className="flex items-center space-x-1 sm:space-x-2 no-print">
+              {/* Placement Cheat Sheet Quick Print */}
+              <button
+                onClick={handlePrint}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-400 border border-emerald-500/20 transition-all shadow-sm"
+                title="Print or Save Note as Compact Placement Cheat Sheet"
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Cheat Sheet</span>
+              </button>
+
               {/* AI Copilot */}
               <button
                 onClick={() => setIsAICopilotOpen(true)}
@@ -362,15 +416,21 @@ export default function NoteReader() {
           </div>
 
           {/* Reading Time & Date Info */}
-          <div className="flex items-center space-x-4 text-xs text-slate-500 dark:text-slate-400 mt-2 font-mono">
-            <span className="flex items-center space-x-1">
-              <Clock className="w-3.5 h-3.5 text-teal-500" />
-              <span>{activeNote.readTime || '5 min read'}</span>
+          <div className="flex items-center flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400 mt-2 font-mono">
+            <span className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 font-bold">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{readingTimeLeft}</span>
+              <span className="text-slate-400 font-normal">({Math.round(scrollProgress)}%)</span>
             </span>
             <span className="flex items-center space-x-1">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
               <span>Updated {activeNote.lastUpdated || 'Recently'}</span>
             </span>
+            {activeNote.content && (
+              <span className="text-slate-500">
+                • {activeNote.content.trim().split(/\s+/).filter(Boolean).length} words
+              </span>
+            )}
           </div>
 
           {/* Tags */}

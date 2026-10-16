@@ -19,9 +19,11 @@ export default function AuthModal({ isOpen, onClose }) {
     setAuthMode,
     authError,
     setAuthError,
+    hasConfigError,
     loginGoogle,
     loginEmailOrUsername,
-    registerEmailOrUsername
+    registerEmailOrUsername,
+    loginAsLocalUser
   } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
@@ -212,12 +214,41 @@ export default function AuthModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {authError && (
+          {hasConfigError ? (
+            <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs flex flex-col space-y-2.5">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-300">Firebase Auth Not Activated</p>
+                  <p className="text-[11px] text-amber-200/80 mt-0.5 leading-relaxed">
+                    Firebase Console mein <strong>Authentication</strong> enable nahi hai.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-black/50 border border-amber-500/20 text-[10px] space-y-1 text-slate-300">
+                <p className="font-bold text-teal-400">Quick 30-sec Fix in Firebase Console:</p>
+                <p>1. Open <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-teal-300 underline font-semibold">console.firebase.google.com</a></p>
+                <p>2. Select <strong>notes-vault-dfc48</strong> → <strong>Build → Authentication</strong></p>
+                <p>3. Click <strong>Get Started</strong>, then in <strong>Sign-in method</strong> toggle ON <strong>Email/Password</strong> & <strong>Google</strong>.</p>
+              </div>
+
+              {/* Instant 1-Click Fallback */}
+              <button
+                type="button"
+                onClick={() => loginAsLocalUser(displayName, identifier)}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold transition flex items-center justify-center space-x-2 text-xs shadow"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Continue as Student Profile ({identifier || 'Student'})</span>
+              </button>
+            </div>
+          ) : authError ? (
             <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{authError}</span>
             </div>
-          )}
+          ) : null}
 
           <button
             type="submit"
@@ -240,7 +271,18 @@ export default function AuthModal({ isOpen, onClose }) {
           </button>
         </form>
 
-        <p className="text-[10px] text-slate-500 text-center mt-4">
+        {/* Quick Offline / Demo access */}
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={() => loginAsLocalUser(displayName || 'Student', identifier || 'student')}
+            className="text-[10px] text-teal-400 hover:text-teal-300 underline transition"
+          >
+            Or start immediately with an Instant Student Profile →
+          </button>
+        </div>
+
+        <p className="text-[10px] text-slate-500 text-center mt-3">
           Notes can always be browsed freely without an account.
         </p>
       </div>

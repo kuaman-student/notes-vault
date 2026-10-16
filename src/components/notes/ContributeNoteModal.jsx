@@ -21,10 +21,9 @@ import {
 
 export default function ContributeNoteModal({ isOpen, onClose }) {
   const { user, isLoggedIn, openAuthModal } = useAuth();
-  const { categories, folders } = useNotes();
+  const { folders } = useNotes();
 
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(categories[0]?.name || 'General');
   const [folderId, setFolderId] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [content, setContent] = useState('');
@@ -56,11 +55,13 @@ export default function ContributeNoteModal({ isOpen, onClose }) {
         .map((t) => t.trim().replace(/^#/, ''))
         .filter(Boolean);
 
+      const targetFolder = folders.find((f) => f.id === folderId);
+
       const payload = {
         title: title.trim(),
         content: content.trim(),
-        category,
         folderId: folderId || null,
+        category: targetFolder ? targetFolder.name : 'General',
         tags: tags.length > 0 ? tags : ['Community'],
         readTime: `${Math.max(1, Math.ceil(content.split(/\s+/).length / 200))} min read`
       };
@@ -158,52 +159,38 @@ export default function ContributeNoteModal({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* Category & Folder */}
+              {/* Target Folder & Tags (Clean & matching Admin Editor) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-teal-500 text-white text-xs outline-none transition"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id || c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Target Folder</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Target Folder / Branch
+                  </label>
                   <select
                     value={folderId}
                     onChange={(e) => setFolderId(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-teal-500 text-white text-xs outline-none transition"
                   >
-                    <option value="">Root / Unfiled</option>
+                    <option value="">📁 Root / Unfiled</option>
                     {folders.map((f) => (
                       <option key={f.id} value={f.id}>
-                        📁 {f.name}
+                        {f.parentId ? '↳ 📂 ' : '📁 '} {f.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* Tags */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Tags (comma separated)
-                </label>
-                <input
-                  type="text"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="opencv, computer-vision, interview-prep"
-                  className="w-full px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-teal-500 text-white text-xs outline-none transition"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Tags (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={tagsInput}
+                    onChange={(e) => setTagsInput(e.target.value)}
+                    placeholder="e.g. opencv, python, placement"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-teal-500 text-white text-xs outline-none transition"
+                  />
+                </div>
               </div>
 
               {/* Markdown Content & Preview Toggle */}

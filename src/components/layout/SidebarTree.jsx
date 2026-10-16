@@ -26,9 +26,8 @@ function TreeNode({
 }) {
   const childFolders = folders.filter((f) => f.parentId === folder.id);
   const folderNotes = notes.filter((n) => n.folderId === folder.id);
-  // Default: Root folders (depth === 0) are open to show top branches.
-  // Subfolders (depth > 0) are collapsed by default so the tree is tidy.
-  const isExpanded = folder.isExpanded !== undefined ? folder.isExpanded : depth === 0;
+  // Default: Closed by default so only root folder headers are visible (no subfiles or subfolders open on load)
+  const isExpanded = folder.isExpanded === true;
 
   return (
     <div className="select-none">

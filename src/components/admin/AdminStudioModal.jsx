@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSecurity } from '../../context/SecurityContext';
 import { useNotes } from '../../context/NotesContext';
 import { FirebaseService } from '../../services/firebaseService';
@@ -18,7 +18,12 @@ import {
   FileText,
   AlertCircle,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  CheckCircle2,
+  Trash2,
+  Eye,
+  User,
+  Inbox
 } from 'lucide-react';
 
 export default function AdminStudioModal({ isOpen, onClose }) {
@@ -36,8 +41,41 @@ export default function AdminStudioModal({ isOpen, onClose }) {
     syncCloudData
   } = useNotes();
 
-  const [activeTab, setActiveTab] = useState('actions'); // 'actions' | 'github' | 'security' | 'cloud'
+  const [activeTab, setActiveTab] = useState('actions'); // 'actions' | 'approvals' | 'github' | 'security' | 'cloud'
   
+  // Community Pending Notes Approval State
+  const [pendingNotes, setPendingNotes] = useState([]);
+  const [approvingNoteId, setApprovingNoteId] = useState(null);
+  const [expandedPreviewId, setExpandedPreviewId] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsubscribe = FirebaseService.subscribeToPendingNotes((notesList) => {
+      setPendingNotes(notesList || []);
+    });
+    return () => unsubscribe();
+  }, [isOpen]);
+
+  const handleApprove = async (noteId) => {
+    setApprovingNoteId(noteId);
+    try {
+      await FirebaseService.approveNote(noteId);
+    } catch (err) {
+      console.error('Approve error:', err);
+    } finally {
+      setApprovingNoteId(null);
+    }
+  };
+
+  const handleReject = async (noteId) => {
+    if (!window.confirm('Are you sure you want to discard this community submission?')) return;
+    try {
+      await FirebaseService.rejectNote(noteId);
+    } catch (err) {
+      console.error('Reject error:', err);
+    }
+  };
+
   // GitHub URL Importer State
   const [githubUrl, setGithubUrl] = useState('');
   const [importCategory, setImportCategory] = useState('General');
@@ -178,6 +216,7 @@ export default function AdminStudioModal({ isOpen, onClose }) {
         <div className="flex space-x-2 px-6 pt-4 border-b border-slate-800 bg-slate-950/40">
           {[
             { id: 'actions', label: '⚡ Studio Actions' },
+            { id: 'approvals', label: `📥 Approvals (${pendingNotes.length})`, count: pendingNotes.length },
             { id: 'github', label: '🌐 GitHub Raw Importer' },
             { id: 'cloud', label: '☁️ Cloud Sync' },
             { id: 'security', label: '🔐 Security Passcode' }
@@ -185,16 +224,107 @@ export default function AdminStudioModal({ isOpen, onClose }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-2 rounded-t-xl transition text-xs font-semibold ${
+              className={`px-3.5 py-2 rounded-t-xl transition text-xs font-semibold flex items-center space-x-1.5 ${
                 activeTab === tab.id
                   ? 'bg-slate-900 text-teal-400 border-t-2 border-teal-500 font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              {tab.count > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              )}
             </button>
           ))}
         </div>
+
+        {/* Tab: Community Notes Approvals Queue */}
+        {activeTab === 'approvals' && (
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-white text-sm">Community Submissions Queue</h4>
+                <p className="text-[11px] text-slate-400">
+                  Review notes submitted by students before they appear publicly in the vault.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-teal-500/20 text-teal-300 text-[11px] font-bold border border-teal-500/30">
+                {pendingNotes.length} Pending
+              </span>
+            </div>
+
+            {pendingNotes.length === 0 ? (
+              <div className="p-12 text-center flex flex-col items-center justify-center space-y-3 bg-slate-950/60 rounded-2xl border border-slate-800">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-teal-400" />
+                </div>
+                <h5 className="font-bold text-white text-sm">Queue is Clear!</h5>
+                <p className="text-slate-400 text-xs max-w-sm">
+                  There are no pending notes awaiting moderation. New student contributions will appear here in real-time.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex flex-col space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                            {note.category || 'General'}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            By {note.authorName || 'Student'} • {new Date(note.submittedAt || note.createdAt || Date.now()).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <h5 className="font-bold text-white text-sm mt-1.5">{note.title}</h5>
+                      </div>
+
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          onClick={() => setExpandedPreviewId(expandedPreviewId === note.id ? null : note.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center space-x-1 transition"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>{expandedPreviewId === note.id ? 'Hide' : 'Preview'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleReject(note.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs flex items-center space-x-1 transition"
+                          title="Reject and delete submission"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleApprove(note.id)}
+                          disabled={approvingNoteId === note.id}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center space-x-1 shadow transition disabled:opacity-50"
+                          title="Approve and publish publicly"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{approvingNoteId === note.id ? 'Publishing...' : 'Approve'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Preview */}
+                    {expandedPreviewId === note.id && (
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                        {note.content}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab 1: Studio Actions */}
         {activeTab === 'actions' && (

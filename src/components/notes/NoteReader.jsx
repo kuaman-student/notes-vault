@@ -6,6 +6,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 import TableOfContents from './TableOfContents';
 import ZenReaderModal from './ZenReaderModal';
 import FlashcardsModal from './FlashcardsModal';
+import DoubtSection from './DoubtSection';
 import DashboardHome from '../home/DashboardHome';
 import {
   Clock,
@@ -417,6 +418,9 @@ export default function NoteReader() {
             toggleChecklistItem={toggleChecklistItem}
           />
         </div>
+
+        {/* Real-time Interactive Doubts & Community Discussion */}
+        <DoubtSection noteId={activeNote.id} noteTitle={activeNote.title} />
 
         {/* Previous & Next Navigation */}
         <div className="mt-12 pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between no-print">

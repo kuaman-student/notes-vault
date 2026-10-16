@@ -2,11 +2,22 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { StorageService, DEFAULT_CATEGORIES } from '../services/storageService';
 import { FirebaseService } from '../services/firebaseService';
 import { INITIAL_FOLDERS, INITIAL_NOTES } from '../data/initialNotes';
+import { useAuth } from './AuthContext';
 import confetti from 'canvas-confetti';
 
 const NotesContext = createContext();
 
 export function NotesProvider({ children }) {
+  const { user } = useAuth();
+  const [userProgress, setUserProgress] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nexus_user_progress_cache');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [isContributeModalOpen, setIsContributeModalOpen] = useState(false);
   const [notes, setNotes] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [folders, setFolders] = useState(INITIAL_FOLDERS);
@@ -117,8 +128,8 @@ export function NotesProvider({ children }) {
   const [editingNote, setEditingNote] = useState(null);
 
   // Folder tree expansion normalizer:
-  // Root folders (no parentId) -> opened (true) by default so top branches show.
-  // Deep subfolders (has parentId) -> closed (false) by default so notes aren't flooded!
+  // All folders default to collapsed (false) so only top-level root folder headers are visible.
+  // No subfiles or subfolders are open by default.
   const applyDefaultFolderExpansion = (foldersList, prevFolders = []) => {
     if (!Array.isArray(foldersList)) return [];
     const prevMap = new Map((prevFolders || []).map((f) => [f.id, f.isExpanded]));
@@ -126,7 +137,7 @@ export function NotesProvider({ children }) {
       if (prevMap.has(f.id) && prevMap.get(f.id) !== undefined) {
         return { ...f, isExpanded: prevMap.get(f.id) };
       }
-      return { ...f, isExpanded: !f.parentId };
+      return { ...f, isExpanded: false };
     });
   };
 
@@ -134,7 +145,6 @@ export function NotesProvider({ children }) {
   useEffect(() => {
     let unsubscribeNotes = () => {};
     let unsubscribeFolders = () => {};
-    let unsubscribeQuizzes = () => {};
 
     async function loadData() {
       setIsLoading(true);
@@ -156,7 +166,9 @@ export function NotesProvider({ children }) {
         setCategories(loadedCats.length > 0 ? loadedCats : DEFAULT_CATEGORIES);
         setFolders(applyDefaultFolderExpansion(loadedFolders));
         setNotes(loadedNotes || []);
-        setQuizzes(loadedQuizzes || []);
+        if (!user) {
+          setQuizzes(loadedQuizzes || []);
+        }
 
         // Only select note if specified in URL hash, otherwise keep null for Dashboard
         const hashNoteId = getNoteIdFromHash();
@@ -167,11 +179,10 @@ export function NotesProvider({ children }) {
         // 2. Asynchronous Cloud Fetch from Firebase (notes-vault-dfc48)
         try {
           setCloudSyncStatus('syncing');
-          const [cloudNotes, cloudFolders, cloudCategories, cloudQuizzes] = await Promise.all([
+          const [cloudNotes, cloudFolders, cloudCategories] = await Promise.all([
             FirebaseService.fetchNotes(),
             FirebaseService.fetchFolders(),
-            FirebaseService.fetchCategories(),
-            FirebaseService.fetchQuizzes()
+            FirebaseService.fetchCategories()
           ]);
 
           if (cloudNotes && cloudNotes.length > 0) {
@@ -189,10 +200,6 @@ export function NotesProvider({ children }) {
             setCategories(cloudCategories);
             await StorageService.saveAllCategories(cloudCategories);
           }
-          if (cloudQuizzes && cloudQuizzes.length > 0) {
-            setQuizzes(cloudQuizzes);
-            await StorageService.saveAllQuizzes(cloudQuizzes);
-          }
 
           setCloudSyncStatus('synced');
         } catch (cloudErr) {
@@ -200,7 +207,7 @@ export function NotesProvider({ children }) {
           setCloudSyncStatus('error');
         }
 
-        // 3. Real-time Firebase listeners for live multi-device sync
+        // 3. Real-time Firebase listeners for shared notes and folders
         unsubscribeNotes = FirebaseService.subscribeToNotes((liveNotes) => {
           if (liveNotes && liveNotes.length > 0) {
             setNotes(liveNotes);
@@ -212,13 +219,6 @@ export function NotesProvider({ children }) {
           if (liveFolders && liveFolders.length > 0) {
             setFolders((prev) => applyDefaultFolderExpansion(liveFolders, prev));
             StorageService.saveAllFolders(liveFolders);
-          }
-        });
-
-        unsubscribeQuizzes = FirebaseService.subscribeToQuizzes((liveQuizzes) => {
-          if (liveQuizzes && liveQuizzes.length > 0) {
-            setQuizzes(liveQuizzes);
-            StorageService.saveAllQuizzes(liveQuizzes);
           }
         });
       } catch (err) {
@@ -233,9 +233,50 @@ export function NotesProvider({ children }) {
     return () => {
       unsubscribeNotes();
       unsubscribeFolders();
-      unsubscribeQuizzes();
     };
   }, []);
+
+  // Real-time synchronization of personalized user progress & scoped quizzes
+  useEffect(() => {
+    let unsubscribeUserProgress = () => {};
+    let unsubscribeUserQuizzes = () => {};
+
+    if (user?.uid) {
+      // 1. Fetch & Subscribe to current user's revisionStatus & bookmarks
+      unsubscribeUserProgress = FirebaseService.subscribeToUserProgress(user.uid, (cloudProgress) => {
+        if (cloudProgress) {
+          setUserProgress(cloudProgress);
+          try {
+            localStorage.setItem(`nexus_user_progress_${user.uid}`, JSON.stringify(cloudProgress));
+          } catch {}
+        }
+      });
+
+      // 2. Fetch & Subscribe to current user's scoped quizzes
+      unsubscribeUserQuizzes = FirebaseService.subscribeToUserQuizzes(user.uid, (cloudQuizzes) => {
+        if (cloudQuizzes) {
+          setQuizzes(cloudQuizzes);
+          StorageService.saveAllQuizzes(cloudQuizzes);
+        }
+      });
+    } else {
+      // Guest Mode: load from local storage only
+      try {
+        const guestProgress = localStorage.getItem('nexus_guest_progress');
+        setUserProgress(guestProgress ? JSON.parse(guestProgress) : {});
+      } catch {
+        setUserProgress({});
+      }
+      StorageService.getAllQuizzes().then((localQuizzes) => {
+        setQuizzes(localQuizzes || []);
+      });
+    }
+
+    return () => {
+      unsubscribeUserProgress();
+      unsubscribeUserQuizzes();
+    };
+  }, [user?.uid]);
 
   // Sync scratchpad
   const updateScratchpad = (text) => {
@@ -243,67 +284,93 @@ export function NotesProvider({ children }) {
     StorageService.saveScratchpad(text);
   };
 
-  // Compute active note - strictly returns null if selectedNoteId is null (shows DashboardHome)
+  // Public notes: pending approval notes are hidden from public students unless they authored it
+  const publicNotes = useMemo(() => {
+    return notes.filter((n) => {
+      if (n.status === 'pending_approval') {
+        return user?.uid && n.authorUid === user.uid;
+      }
+      return true;
+    });
+  }, [notes, user?.uid]);
+
+  // Compute active note with personalized user progress (returns null for Dashboard)
   const activeNote = useMemo(() => {
-    if (!notes.length || !selectedNoteId) return null;
-    return notes.find((n) => n.id === selectedNoteId) || null;
-  }, [notes, selectedNoteId]);
+    if (!publicNotes.length || !selectedNoteId) return null;
+    const note = publicNotes.find((n) => n.id === selectedNoteId);
+    if (!note) return null;
+    const prog = userProgress[note.id];
+    return {
+      ...note,
+      isBookmarked: prog?.isBookmarked !== undefined ? prog.isBookmarked : !!note.isBookmarked,
+      revisionStatus: prog?.revisionStatus || note.revisionStatus || 'all'
+    };
+  }, [publicNotes, selectedNoteId, userProgress]);
 
   // Compute all available tags
   const allTags = useMemo(() => {
     const tagSet = new Set();
-    notes.forEach((n) => {
+    publicNotes.forEach((n) => {
       if (Array.isArray(n.tags)) {
         n.tags.forEach((t) => tagSet.add(t));
       }
     });
     return Array.from(tagSet);
-  }, [notes]);
+  }, [publicNotes]);
 
-  // Filtered notes
+  // Filtered notes with personalized user progress
   const filteredNotes = useMemo(() => {
-    return notes.filter((note) => {
-      // Folder filter
-      if (selectedFolderId && note.folderId !== selectedFolderId) {
-        return false;
-      }
-
-      // Category filter
-      if (selectedCategory !== 'All' && note.category !== selectedCategory) {
-        return false;
-      }
-
-      // Tag filter
-      if (selectedTag && (!note.tags || !note.tags.includes(selectedTag))) {
-        return false;
-      }
-
-      // Status filter
-      if (statusFilter === 'bookmarked' && !note.isBookmarked) {
-        return false;
-      }
-      if (statusFilter === 'mastered' && note.revisionStatus !== 'mastered') {
-        return false;
-      }
-      if (statusFilter === 'need_revision' && note.revisionStatus !== 'need_revision') {
-        return false;
-      }
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = (note.title || '').toLowerCase().includes(q);
-        const matchesContent = (note.content || '').toLowerCase().includes(q);
-        const matchesCategory = (note.category || '').toLowerCase().includes(q);
-        const matchesTag = note.tags && note.tags.some((t) => t.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesContent && !matchesCategory && !matchesTag) {
+    return publicNotes
+      .map((note) => {
+        const prog = userProgress[note.id];
+        return {
+          ...note,
+          isBookmarked: prog?.isBookmarked !== undefined ? prog.isBookmarked : !!note.isBookmarked,
+          revisionStatus: prog?.revisionStatus || note.revisionStatus || 'all'
+        };
+      })
+      .filter((note) => {
+        // Folder filter
+        if (selectedFolderId && note.folderId !== selectedFolderId) {
           return false;
         }
-      }
 
-      return true;
-    });
-  }, [notes, selectedFolderId, selectedCategory, selectedTag, statusFilter, searchQuery]);
+        // Category filter
+        if (selectedCategory !== 'All' && note.category !== selectedCategory) {
+          return false;
+        }
+
+        // Tag filter
+        if (selectedTag && (!note.tags || !note.tags.includes(selectedTag))) {
+          return false;
+        }
+
+        // Status filter
+        if (statusFilter === 'bookmarked' && !note.isBookmarked) {
+          return false;
+        }
+        if (statusFilter === 'mastered' && note.revisionStatus !== 'mastered') {
+          return false;
+        }
+        if (statusFilter === 'need_revision' && note.revisionStatus !== 'need_revision') {
+          return false;
+        }
+
+        // Search query
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchesTitle = (note.title || '').toLowerCase().includes(q);
+          const matchesContent = (note.content || '').toLowerCase().includes(q);
+          const matchesCategory = (note.category || '').toLowerCase().includes(q);
+          const matchesTag = note.tags && note.tags.some((t) => t.toLowerCase().includes(q));
+          if (!matchesTitle && !matchesContent && !matchesCategory && !matchesTag) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+  }, [publicNotes, userProgress, selectedFolderId, selectedCategory, selectedTag, statusFilter, searchQuery]);
 
   // Manual 1-click cloud sync
   const syncCloudData = async () => {
@@ -381,8 +448,7 @@ export function NotesProvider({ children }) {
     setFolders((prev) =>
       prev.map((f) => {
         if (f.id === folderId) {
-          const currentlyExpanded = f.isExpanded !== undefined ? f.isExpanded : !f.parentId;
-          return { ...f, isExpanded: !currentlyExpanded };
+          return { ...f, isExpanded: !f.isExpanded };
         }
         return f;
       })
@@ -476,16 +542,38 @@ export function NotesProvider({ children }) {
   };
 
   const toggleBookmark = async (noteId) => {
-    const target = notes.find((n) => n.id === noteId);
-    if (!target) return;
-    const updated = { ...target, isBookmarked: !target.isBookmarked };
-    await saveNote(updated);
+    const currentProg = userProgress[noteId];
+    const currentBookmarked = currentProg?.isBookmarked !== undefined
+      ? currentProg.isBookmarked
+      : !!notes.find((n) => n.id === noteId)?.isBookmarked;
+    const nextBookmarked = !currentBookmarked;
+
+    setUserProgress((prev) => {
+      const updated = {
+        ...prev,
+        [noteId]: {
+          ...(prev[noteId] || {}),
+          isBookmarked: nextBookmarked,
+          updatedAt: new Date().toISOString()
+        }
+      };
+      try {
+        localStorage.setItem(
+          user?.uid ? `nexus_user_progress_${user.uid}` : 'nexus_guest_progress',
+          JSON.stringify(updated)
+        );
+      } catch {}
+      return updated;
+    });
+
+    if (user?.uid) {
+      await FirebaseService.saveUserNoteProgress(user.uid, noteId, {
+        isBookmarked: nextBookmarked
+      });
+    }
   };
 
   const updateRevisionStatus = async (noteId, status) => {
-    const target = notes.find((n) => n.id === noteId);
-    if (!target) return;
-
     if (status === 'mastered') {
       try {
         confetti({
@@ -496,8 +584,31 @@ export function NotesProvider({ children }) {
       } catch {}
     }
 
-    const updated = { ...target, revisionStatus: status };
-    await saveNote(updated);
+    setUserProgress((prev) => {
+      const updated = {
+        ...prev,
+        [noteId]: {
+          ...(prev[noteId] || {}),
+          revisionStatus: status,
+          lastStudiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      };
+      try {
+        localStorage.setItem(
+          user?.uid ? `nexus_user_progress_${user.uid}` : 'nexus_guest_progress',
+          JSON.stringify(updated)
+        );
+      } catch {}
+      return updated;
+    });
+
+    if (user?.uid) {
+      await FirebaseService.saveUserNoteProgress(user.uid, noteId, {
+        revisionStatus: status,
+        lastStudiedAt: new Date().toISOString()
+      });
+    }
   };
 
   // Import single/multiple Markdown files
@@ -574,24 +685,34 @@ export function NotesProvider({ children }) {
     StorageService.exportAsJSON(notes, categories, folders);
   };
 
-  // --- QUIZ & EXAM ARENA HANDLERS ---
+  // --- QUIZ & EXAM ARENA HANDLERS (USER-SCOPED) ---
   const saveQuizAttempt = async (quizData) => {
     const updated = await StorageService.saveQuiz(quizData);
     setQuizzes(updated);
-    FirebaseService.saveQuiz(quizData);
+    if (user?.uid) {
+      FirebaseService.saveUserQuiz(user.uid, quizData);
+    } else {
+      FirebaseService.saveUserQuiz('anonymous', quizData);
+    }
     return updated;
   };
 
   const deleteQuizAttempt = async (quizId) => {
     const updated = await StorageService.deleteQuiz(quizId);
     setQuizzes(updated);
-    FirebaseService.deleteQuiz(quizId);
+    if (user?.uid) {
+      FirebaseService.deleteUserQuiz(user.uid, quizId);
+    } else {
+      FirebaseService.deleteUserQuiz('anonymous', quizId);
+    }
     return updated;
   };
 
   const clearAllQuizAttempts = async () => {
-    for (const q of quizzes) {
-      FirebaseService.deleteQuiz(q.id);
+    if (user?.uid) {
+      for (const q of quizzes) {
+        FirebaseService.deleteUserQuiz(user.uid, q.id);
+      }
     }
     await StorageService.clearAllQuizzes();
     setQuizzes([]);
@@ -696,7 +817,11 @@ export function NotesProvider({ children }) {
         setEditingNote,
         noteChecklists,
         toggleChecklistItem,
-        lastViewedNoteId
+        lastViewedNoteId,
+        // User-scoped progress & Community Notes
+        userProgress,
+        isContributeModalOpen,
+        setIsContributeModalOpen
       }}
     >
       {children}

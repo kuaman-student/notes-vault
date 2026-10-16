@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { SecurityProvider, useSecurity } from './context/SecurityContext';
 import { NotesProvider, useNotes } from './context/NotesContext';
 import Header from './components/layout/Header';
@@ -20,6 +21,9 @@ import AdminFloatingPill from './components/admin/AdminFloatingPill';
 import AdminStudioModal from './components/admin/AdminStudioModal';
 import CloudSyncModal from './components/database/CloudSyncModal';
 import QuizArenaModal from './components/quiz/QuizArenaModal';
+import AuthModal from './components/auth/AuthModal';
+import ThemePickerModal from './components/theme/ThemePickerModal';
+import ContributeNoteModal from './components/notes/ContributeNoteModal';
 
 function MainLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -47,8 +51,13 @@ function MainLayout() {
     setIsCloudSyncOpen,
     isQuizModalOpen,
     setIsQuizModalOpen,
-    isLoading
+    isLoading,
+    isContributeModalOpen,
+    setIsContributeModalOpen
   } = useNotes();
+
+  const { isThemePickerOpen, setIsThemePickerOpen } = useTheme();
+  const { isAuthModalOpen, closeAuthModal } = useAuth();
 
   const {
     isSecretModalOpen,
@@ -162,6 +171,24 @@ function MainLayout() {
         isOpen={isQuizModalOpen}
         onClose={() => setIsQuizModalOpen(false)}
       />
+
+      {/* Student Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+      />
+
+      {/* Visual Theme Studio Modal */}
+      <ThemePickerModal
+        isOpen={isThemePickerOpen}
+        onClose={() => setIsThemePickerOpen(false)}
+      />
+
+      {/* Student Community Note Submission Modal */}
+      <ContributeNoteModal
+        isOpen={isContributeModalOpen}
+        onClose={() => setIsContributeModalOpen(false)}
+      />
     </div>
   );
 }
@@ -169,11 +196,13 @@ function MainLayout() {
 export default function App() {
   return (
     <ThemeProvider>
-      <SecurityProvider>
-        <NotesProvider>
-          <MainLayout />
-        </NotesProvider>
-      </SecurityProvider>
+      <AuthProvider>
+        <SecurityProvider>
+          <NotesProvider>
+            <MainLayout />
+          </NotesProvider>
+        </SecurityProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

@@ -27,7 +27,8 @@ import {
   ChevronRight,
   Folder,
   Brain,
-  Home
+  Home,
+  AlignLeft
 } from 'lucide-react';
 
 export default function NoteReader() {
@@ -61,6 +62,7 @@ export default function NoteReader() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobileOutlineOpen, setIsMobileOutlineOpen] = useState(false);
 
   // Stop speech if note changes
   useEffect(() => {
@@ -201,9 +203,9 @@ export default function NoteReader() {
   const nextNote = currentIndex < notes.length - 1 ? notes[currentIndex + 1] : null;
 
   return (
-    <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in relative">
-      {/* Top Fixed Reading Progress HUD */}
-      <div className="fixed top-0 left-0 right-0 z-40 h-1 bg-slate-800/30 pointer-events-none no-print">
+    <div className="flex-1 flex w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 animate-fade-in relative">
+      {/* Top Fixed Reading Progress HUD (Aligned beneath sticky header) */}
+      <div className="fixed top-16 left-0 right-0 z-30 h-1 bg-slate-800/40 pointer-events-none no-print">
         <div
           className="h-full bg-gradient-to-r from-teal-400 via-indigo-500 to-purple-500 shadow-sm shadow-teal-500/50 transition-all duration-150 ease-out"
           style={{ width: `${scrollProgress}%` }}
@@ -215,7 +217,7 @@ export default function NoteReader() {
         {/* Breadcrumb & Metadata Header */}
         <div className="pb-6 border-b border-slate-200 dark:border-slate-800/80">
           {/* Interactive Branch Breadcrumbs */}
-          <nav className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-3 overflow-x-auto pb-1">
+          <nav className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono mb-3 overflow-x-auto no-scrollbar pb-1 whitespace-nowrap">
             <button
               onClick={() => setSelectedNoteId(null)}
               className="hover:text-teal-400 transition flex items-center space-x-1 shrink-0 font-semibold"
@@ -245,7 +247,7 @@ export default function NoteReader() {
             <span className="text-slate-200 truncate font-medium">{activeNote.title}</span>
           </nav>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             {/* Category & Status Badges */}
             <div className="flex items-center flex-wrap gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
@@ -276,26 +278,36 @@ export default function NoteReader() {
               )}
             </div>
 
-            {/* Quick Action Buttons */}
-            <div className="flex items-center space-x-1 sm:space-x-2 no-print">
+            {/* Quick Action Buttons (Touch-scrollable horizontal rail) */}
+            <div className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 no-print">
+              {/* Mobile Table of Contents Outline Trigger */}
+              <button
+                onClick={() => setIsMobileOutlineOpen(true)}
+                className="flex xl:hidden items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/25 transition shrink-0"
+                title="View Table of Contents Outline"
+              >
+                <AlignLeft className="w-3.5 h-3.5 text-teal-400" />
+                <span>Outline</span>
+              </button>
+
               {/* Placement Cheat Sheet Quick Print */}
               <button
                 onClick={handlePrint}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-400 border border-emerald-500/20 transition-all shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-400 border border-emerald-500/20 transition-all shadow-sm shrink-0"
                 title="Print or Save Note as Compact Placement Cheat Sheet"
               >
                 <Printer className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Cheat Sheet</span>
+                <span className="hidden xs:inline">Cheat Sheet</span>
               </button>
 
               {/* AI Copilot */}
               <button
                 onClick={() => setIsAICopilotOpen(true)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-500/15 to-teal-500/15 hover:from-purple-500/25 hover:to-teal-500/25 text-purple-600 dark:text-purple-300 border border-purple-500/30 transition-all shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-500/15 to-teal-500/15 hover:from-purple-500/25 hover:to-teal-500/25 text-purple-600 dark:text-purple-300 border border-purple-500/30 transition-all shadow-sm shrink-0"
                 title="AI Study Copilot"
               >
                 <Bot className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden sm:inline">AI Copilot</span>
+                <span className="hidden xs:inline">AI Copilot</span>
               </button>
 
               {/* Flashcard revision */}
@@ -514,8 +526,12 @@ export default function NoteReader() {
         </div>
       </article>
 
-      {/* Table of Contents Floating Right Sidebar */}
-      <TableOfContents content={activeNote.content} />
+      {/* Table of Contents Floating Right Sidebar & Mobile Drawer */}
+      <TableOfContents
+        content={activeNote.content}
+        isMobileOpen={isMobileOutlineOpen}
+        onMobileClose={() => setIsMobileOutlineOpen(false)}
+      />
 
       {/* Zen Mode Modal */}
       <ZenReaderModal

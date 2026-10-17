@@ -91,30 +91,40 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-16 lg:top-0 bottom-0 left-0 z-30 lg:z-10 w-80 h-[calc(100vh-4rem)] lg:h-full bg-[#12141c] dark:bg-[#0c0e15] border-r border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+        className={`fixed lg:static top-16 lg:top-0 bottom-0 left-0 z-30 lg:z-10 w-72 sm:w-80 max-w-[85vw] h-[calc(100vh-4rem)] lg:h-full bg-[#12141c] dark:bg-[#0c0e15] border-r border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden shadow-2xl lg:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Top Header Row with View Mode Switcher and Quick Actions */}
-        <div className="p-3 border-b border-slate-800/80 bg-slate-950/40">
-          {/* Vault Dashboard Home Button */}
-          <button
-            onClick={() => {
-              setSelectedNoteId(null);
-              if (window.innerWidth < 1024) onClose();
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono font-bold transition mb-2.5 ${
-              selectedNoteId === null
-                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-300 border border-slate-800/80'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Home className="w-4 h-4 text-teal-400" />
-              <span>Vault Dashboard</span>
-            </div>
-            <span className="text-[10px] text-slate-500 font-normal">Home</span>
-          </button>
+        <div className="p-3 border-b border-slate-800/80 bg-slate-950/40 shrink-0">
+          {/* Vault Dashboard Home Button + Mobile Close */}
+          <div className="flex items-center space-x-1.5 mb-2.5">
+            <button
+              onClick={() => {
+                setSelectedNoteId(null);
+                if (window.innerWidth < 1024) onClose();
+              }}
+              className={`flex-1 flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono font-bold transition ${
+                selectedNoteId === null
+                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
+                  : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-300 border border-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Home className="w-4 h-4 text-teal-400" />
+                <span>Vault Dashboard</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-normal">Home</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl lg:hidden text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0 border border-slate-800"
+              title="Close Sidebar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
           <div className="flex items-center justify-between mb-2">
             {/* View Mode Toggle: Tree (Branches) vs Filters */}

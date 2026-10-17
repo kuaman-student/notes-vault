@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNotes } from '../../context/NotesContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSecurity } from '../../context/SecurityContext';
@@ -26,7 +26,10 @@ import {
   User,
   LogOut,
   Palette,
-  Share2
+  Share2,
+  LayoutGrid,
+  X,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) {
@@ -53,27 +56,37 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
   const { isUnlocked, lockVault, handleLogoTap, requireAuth } = useSecurity();
   const { theme, cycleTheme, setIsThemePickerOpen } = useTheme();
   const { user, isLoggedIn, logout, openAuthModal } = useAuth();
+  
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
+  const toolsMenuRef = useRef(null);
+
+  // Close mobile tools dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(e.target)) {
+        setIsMobileToolsOpen(false);
+      }
+    };
+    if (isMobileToolsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMobileToolsOpen]);
 
   const handleCreateNew = () => {
     requireAuth(() => {
       setEditingNote(null);
       setIsEditorOpen(true);
+      setIsMobileToolsOpen(false);
     });
-  };
-
-  const themeIcons = {
-    dark: <Moon className="w-4 h-4 text-indigo-400" />,
-    cyberpunk: <Zap className="w-4 h-4 text-purple-400 animate-pulse" />,
-    matrix: <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />,
-    light: <Sun className="w-4 h-4 text-amber-500" />
   };
 
   return (
     <header className="sticky top-0 z-40 w-full shrink-0 backdrop-blur-xl bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Left: Mobile Menu Toggle & Brand Logo with Stealth Tap */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             className="p-2 rounded-xl lg:hidden text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition"
@@ -87,38 +100,39 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
               setSelectedNoteId(null);
               handleLogoTap();
             }}
-            className="flex items-center space-x-2.5 cursor-pointer select-none group"
+            className="flex items-center space-x-2 cursor-pointer select-none group"
             title="Notes Vault (Click to go Home | 5x Tap for Admin Unlock)"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-              <BookMarked className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform shrink-0">
+              <BookMarked className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white group-hover:text-teal-400 transition-colors">
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white group-hover:text-teal-400 transition-colors">
                   Notes<span className="text-teal-500">Vault</span>
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                <span className="hidden xs:inline-block px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
                   v2.0
                 </span>
               </div>
-              <p className="hidden sm:block text-[10px] text-slate-400 font-medium">
+              <p className="hidden md:block text-[10px] text-slate-400 font-medium">
                 Personal Knowledge & Placement Vault
               </p>
             </div>
           </div>
         </div>
 
-        {/* Center: Search Trigger (Command Palette style) */}
-        <div className="flex-1 max-w-sm mx-2">
+        {/* Center: Search Trigger (Responsive Command Palette) */}
+        <div className="flex-1 max-w-[140px] xs:max-w-xs sm:max-w-sm mx-1 sm:mx-2">
           <button
             id="search-trigger-btn"
             onClick={() => setIsSearchOpen(true)}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs shadow-inner"
+            className="w-full flex items-center justify-between px-2.5 sm:px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs shadow-inner"
           >
-            <div className="flex items-center space-x-2 truncate">
-              <Search className="w-4 h-4 text-teal-500 shrink-0" />
-              <span className="truncate">Search notes, tags...</span>
+            <div className="flex items-center space-x-1.5 sm:space-x-2 truncate">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-500 shrink-0" />
+              <span className="truncate hidden xs:inline">Search notes, tags...</span>
+              <span className="truncate xs:hidden">Search...</span>
             </div>
             <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
               Ctrl+K
@@ -126,8 +140,8 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
           </button>
         </div>
 
-        {/* Right: Futuristic Tools & Actions */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2">
+        {/* Right Section: DESKTOP View (Screen >= lg) */}
+        <div className="hidden lg:flex items-center space-x-1.5 sm:space-x-2 shrink-0">
           {/* Live Firebase Cloud Sync Pill */}
           <button
             onClick={() => setIsCloudSyncOpen(true)}
@@ -147,7 +161,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             ) : (
               <Cloud className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span className="hidden md:inline">
+            <span className="hidden xl:inline">
               {cloudSyncStatus === 'synced'
                 ? 'Cloud Synced'
                 : cloudSyncStatus === 'syncing'
@@ -163,7 +177,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             title="Neural Quiz Arena (Generate & Take Tests)"
           >
             <Brain className="w-4 h-4 text-purple-400 animate-pulse" />
-            <span className="hidden sm:inline font-bold">Quiz Arena</span>
+            <span className="font-bold">Quiz Arena</span>
             {quizzes.length > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-bold">
                 {quizzes.length}
@@ -178,7 +192,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             title="Cosmic Knowledge Graph"
           >
             <Network className="w-4 h-4 text-teal-400 animate-pulse" />
-            <span className="hidden lg:inline">Graph</span>
+            <span>Graph</span>
           </button>
 
           {/* Neural Pomodoro Timer */}
@@ -210,7 +224,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             title="Create New Note (Master Lock Required)"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden lg:inline">New Note</span>
+            <span>New Note</span>
           </button>
 
           {/* Contribute Note (Student Community Submissions) */}
@@ -220,7 +234,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
             title="Contribute a Study Note (Queued for Admin Review)"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline font-semibold">Contribute</span>
+            <span className="font-semibold">Contribute</span>
           </button>
 
           {/* Upload */}
@@ -265,7 +279,7 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
                     {(user?.displayName || user?.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
-                <span className="hidden md:inline font-semibold text-slate-800 dark:text-slate-200 max-w-[85px] truncate">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 max-w-[85px] truncate">
                   {user?.displayName || user?.email?.split('@')[0]}
                 </span>
               </button>
@@ -300,9 +314,210 @@ export default function Header({ isMobileSidebarOpen, setIsMobileSidebarOpen }) 
               title="Sign in with Google or Username/Password"
             >
               <User className="w-3.5 h-3.5 text-teal-400" />
-              <span className="hidden sm:inline">Sign In</span>
+              <span>Sign In</span>
             </button>
           )}
+        </div>
+
+        {/* Right Section: MOBILE / TABLET View (Screen < lg) */}
+        <div className="flex lg:hidden items-center space-x-1.5 shrink-0" ref={toolsMenuRef}>
+          {/* Quick Quiz Arena Mini Pill */}
+          <button
+            onClick={() => setIsQuizModalOpen(true)}
+            className="p-2 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 relative transition"
+            title="Neural Quiz Arena"
+          >
+            <Brain className="w-4 h-4 text-purple-400" />
+            {quizzes.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {quizzes.length}
+              </span>
+            )}
+          </button>
+
+          {/* Visual Theme Picker */}
+          <button
+            onClick={() => setIsThemePickerOpen(true)}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-teal-400 border border-slate-200 dark:border-slate-700 transition"
+            title="Change Theme"
+          >
+            <Palette className="w-4 h-4" />
+          </button>
+
+          {/* User Profile or Sign In */}
+          {isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 text-white flex items-center justify-center text-xs font-bold border border-teal-500/30 overflow-hidden shadow-sm"
+              >
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.displayName || user?.email || 'U')[0].toUpperCase()
+                )}
+              </button>
+              {isUserMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-52 p-2 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl z-50 text-xs animate-fade-in font-mono"
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  <div className="px-3 py-2 border-b border-slate-800">
+                    <p className="font-bold text-white truncate">{user?.displayName || 'Student'}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full mt-1.5 px-3 py-2 rounded-xl text-left text-rose-400 hover:bg-rose-500/10 flex items-center space-x-2 transition"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => openAuthModal('login')}
+              className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 transition"
+              title="Sign In"
+            >
+              <User className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Mobile All-Tools Launcher Button */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMobileToolsOpen(!isMobileToolsOpen)}
+              className={`p-2 rounded-xl border transition ${
+                isMobileToolsOpen
+                  ? 'bg-teal-500 text-white border-teal-400 shadow-md'
+                  : 'bg-slate-100 dark:bg-slate-900 text-slate-400 hover:text-white border-slate-200 dark:border-slate-800'
+              }`}
+              title="All Tools & Utilities"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Tools Dropdown Sheet */}
+            {isMobileToolsOpen && (
+              <div className="absolute right-0 mt-2 w-72 p-3 rounded-2xl bg-slate-900/98 backdrop-blur-2xl border border-teal-500/40 shadow-2xl z-50 text-xs animate-fade-in font-mono space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <span className="font-bold text-white text-xs flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Vault Tools & Apps</span>
+                  </span>
+                  <button
+                    onClick={() => setIsMobileToolsOpen(false)}
+                    className="p-1 rounded text-slate-400 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {/* New Note */}
+                  <button
+                    onClick={handleCreateNew}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">New Note</span>
+                  </button>
+
+                  {/* Contribute Note */}
+                  <button
+                    onClick={() => {
+                      setIsContributeModalOpen(true);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Share2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Contribute</span>
+                  </button>
+
+                  {/* Pomodoro Timer */}
+                  <button
+                    onClick={() => {
+                      setIsPomodoroOpen(true);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Timer className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Pomodoro</span>
+                  </button>
+
+                  {/* Quick Scratchpad */}
+                  <button
+                    onClick={() => {
+                      setIsScratchpadOpen(!isScratchpadOpen);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Edit3 className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Scratchpad</span>
+                  </button>
+
+                  {/* Knowledge Graph */}
+                  <button
+                    onClick={() => {
+                      setIsGraphOpen(true);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Network className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Graph View</span>
+                  </button>
+
+                  {/* Cloud Sync */}
+                  <button
+                    onClick={() => {
+                      setIsCloudSyncOpen(true);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Cloud className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Cloud Sync</span>
+                  </button>
+
+                  {/* Upload */}
+                  <button
+                    onClick={() => {
+                      requireAuth(() => {
+                        setIsUploadOpen(true);
+                        setIsMobileToolsOpen(false);
+                      });
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 text-left transition flex items-center space-x-2"
+                  >
+                    <Upload className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Upload .md</span>
+                  </button>
+
+                  {/* Storage */}
+                  <button
+                    onClick={() => {
+                      setIsDatabaseModalOpen(true);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-left transition flex items-center space-x-2"
+                  >
+                    <Database className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="text-white text-xs font-semibold truncate">Storage DB</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

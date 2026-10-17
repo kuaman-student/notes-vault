@@ -256,25 +256,25 @@ export default function AdminStudioModal({ isOpen, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-fade-in font-mono text-xs">
       <div className="relative w-full max-w-5xl bg-slate-900 border border-teal-500/40 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden neon-glow-teal">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/80 gap-3 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shadow-lg shadow-teal-500/10">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shadow-lg shadow-teal-500/10 shrink-0">
               <Sliders className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="font-bold text-white text-base">Pro Admin Command Center</h3>
+                <h3 className="font-bold text-white text-sm sm:text-base">Pro Admin Command Center</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold uppercase tracking-wider">
-                  MASTER CONTROLLER
+                  MASTER
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 hidden sm:block">
                 Full telemetry, student doubts moderation, content publishing, and cyber defense
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between sm:justify-end space-x-2 w-full sm:w-auto">
             <button
               onClick={() => {
                 lockVault();
@@ -288,7 +288,7 @@ export default function AdminStudioModal({ isOpen, onClose }) {
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition ml-auto sm:ml-0"
             >
               <X className="w-5 h-5" />
             </button>
@@ -296,7 +296,7 @@ export default function AdminStudioModal({ isOpen, onClose }) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1.5 px-6 pt-3 border-b border-slate-800 bg-slate-950/50 overflow-x-auto">
+        <div className="flex space-x-1 px-3 sm:px-6 pt-2 sm:pt-3 border-b border-slate-800 bg-slate-950/50 overflow-x-auto no-scrollbar shrink-0">
           {[
             { id: 'dashboard', label: '📊 Command Center' },
             { id: 'actions', label: '⚡ Studio Actions' },
@@ -309,7 +309,7 @@ export default function AdminStudioModal({ isOpen, onClose }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-2.5 rounded-t-xl transition text-xs font-semibold flex items-center space-x-1.5 shrink-0 ${
+              className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-t-xl transition text-[11px] sm:text-xs font-semibold flex items-center space-x-1.5 shrink-0 ${
                 activeTab === tab.id
                   ? 'bg-slate-900 text-teal-400 border-t-2 border-teal-500 font-bold shadow'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/40'

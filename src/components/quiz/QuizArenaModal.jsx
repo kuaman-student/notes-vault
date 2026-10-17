@@ -251,33 +251,33 @@ export default function QuizArenaModal({ isOpen, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-fade-in">
       <div className="relative w-full max-w-3xl bg-slate-900 border border-teal-500/30 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden neon-glow-teal">
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/60 shrink-0 gap-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
               <Brain className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="font-mono font-bold text-white text-base sm:text-lg tracking-tight">
+                <h3 className="font-mono font-bold text-white text-sm sm:text-lg tracking-tight">
                   Neural Quiz Arena
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">
-                  AI & Multi-Note Engine
+                  AI & Multi-Note
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 hidden sm:block">
                 Generate custom practice & placement tests across single or multiple notes
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between sm:justify-end space-x-2 w-full sm:w-auto">
             {/* Quick Navigation Tabs */}
             {view !== 'playing' && (
               <div className="flex items-center space-x-1 bg-slate-950 rounded-xl p-1 border border-slate-800 text-xs font-mono">
                 <button
                   onClick={() => setView('setup')}
-                  className={`px-3 py-1.5 rounded-lg transition ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition text-[11px] sm:text-xs ${
                     view === 'setup'
                       ? 'bg-teal-500 text-white font-bold'
                       : 'text-slate-400 hover:text-white'
@@ -287,14 +287,14 @@ export default function QuizArenaModal({ isOpen, onClose }) {
                 </button>
                 <button
                   onClick={() => setView('vault')}
-                  className={`px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition flex items-center space-x-1 sm:space-x-1.5 text-[11px] sm:text-xs ${
                     view === 'vault'
                       ? 'bg-teal-500 text-white font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Folder className="w-3.5 h-3.5" />
-                  <span>Quiz Vault ({quizzes.length})</span>
+                  <span>Vault ({quizzes.length})</span>
                 </button>
               </div>
             )}
@@ -304,7 +304,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
                 setTimerActive(false);
                 onClose();
               }}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0 ml-auto sm:ml-0"
               title="Close Quiz Arena"
             >
               <X className="w-5 h-5" />
@@ -314,7 +314,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
 
         {/* ----------------- VIEW 1: QUIZ SETUP ----------------- */}
         {view === 'setup' && (
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-mono">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 text-xs font-mono">
             {/* Step 1: Multi-Note Selector */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -485,7 +485,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
               <label className="block text-slate-300 font-bold mb-2">
                 Practice Mode vs Exam Simulation
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div
                   onClick={() => setQuizMode('practice')}
                   className={`p-3.5 rounded-2xl border cursor-pointer transition ${
@@ -527,7 +527,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
               <button
                 disabled={selectedNoteIds.length === 0}
                 onClick={handleStartQuiz}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-teal-500/25 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-teal-500/25 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 <Zap className="w-4 h-4" />
                 <span>Generate & Start Quiz</span>
@@ -539,7 +539,7 @@ export default function QuizArenaModal({ isOpen, onClose }) {
 
         {/* ----------------- VIEW 2: ACTIVE QUIZ GAMEPLAY ----------------- */}
         {view === 'playing' && currentQ && (
-          <div className="flex-1 overflow-y-auto p-6 sm:p-8 flex flex-col justify-between space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col justify-between space-y-4 sm:space-y-6">
             {/* Top Status Bar */}
             <div>
               <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-2">

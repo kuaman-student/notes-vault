@@ -279,34 +279,34 @@ export default function DashboardHome() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-8 max-w-6xl mx-auto animate-fade-in font-mono text-slate-100">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 max-w-6xl mx-auto animate-fade-in font-mono text-slate-100">
       {/* 1. Hero Greeting Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 border border-teal-500/30 p-6 sm:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 border border-teal-500/30 p-4 sm:p-6 lg:p-8 shadow-2xl">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div>
-            <div className="flex items-center space-x-2 text-xs text-teal-400 font-bold mb-2">
+            <div className="flex items-center space-x-2 text-xs text-teal-400 font-bold mb-1.5 sm:mb-2">
               <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
               <span>{todayStr}</span>
               <span>•</span>
-              <span className="text-slate-400 font-normal">Personal Knowledge Vault</span>
+              <span className="text-slate-400 font-normal">Knowledge Vault</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white">
               {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-indigo-300">Explorer</span> ✨
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl leading-relaxed">
               Your high-speed engineering documentation & placement vault. Review concepts, practice flashcards, and test recall with zero friction.
             </p>
           </div>
 
           {/* Quick Hub Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
             <button
               onClick={() => setIsQuizModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/20 transition flex items-center space-x-2"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/20 transition flex items-center space-x-1.5 sm:space-x-2"
             >
               <Brain className="w-4 h-4 text-purple-200" />
               <span>Quiz Arena</span>
@@ -314,7 +314,7 @@ export default function DashboardHome() {
 
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-bold text-xs border border-slate-700 transition flex items-center space-x-2"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-bold text-xs border border-slate-700 transition flex items-center space-x-1.5 sm:space-x-2"
             >
               <Search className="w-4 h-4 text-teal-400" />
               <span>Search (Ctrl+K)</span>
@@ -324,48 +324,48 @@ export default function DashboardHome() {
       </div>
 
       {/* 2. Key Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-teal-500/40 transition shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold">TOTAL NOTES</span>
-            <BookMarked className="w-4 h-4 text-teal-400" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-teal-500/40 transition shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5 sm:mb-2">
+            <span className="text-[10px] sm:text-[11px] font-bold">TOTAL NOTES</span>
+            <BookMarked className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-400" />
           </div>
-          <div className="text-2xl font-extrabold text-white">{notes.length}</div>
-          <span className="text-[10px] text-slate-500">Across {folders.length} branches</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-white">{notes.length}</div>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 truncate block">Across {folders.length} branches</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-indigo-500/40 transition shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold">BRANCHES / FOLDERS</span>
-            <Folder className="w-4 h-4 text-indigo-400" />
+        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-indigo-500/40 transition shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5 sm:mb-2">
+            <span className="text-[10px] sm:text-[11px] font-bold">BRANCHES</span>
+            <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />
           </div>
-          <div className="text-2xl font-extrabold text-indigo-300">{folders.length}</div>
-          <span className="text-[10px] text-slate-500">Subject-wise structure</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-indigo-300">{folders.length}</div>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 truncate block">Subject-wise structure</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/40 transition shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold">TASKS COMPLETED</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/40 transition shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5 sm:mb-2">
+            <span className="text-[10px] sm:text-[11px] font-bold">TASKS DONE</span>
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-extrabold text-emerald-300">{totalChecklistsCompleted}</div>
-          <span className="text-[10px] text-slate-500">Interactive checklist items</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-emerald-300">{totalChecklistsCompleted}</div>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 truncate block">Checklist tasks</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 transition shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold">QUIZ ACCURACY</span>
-            <Award className="w-4 h-4 text-purple-400" />
+        <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 transition shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5 sm:mb-2">
+            <span className="text-[10px] sm:text-[11px] font-bold">QUIZ ACCURACY</span>
+            <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
           </div>
-          <div className="text-2xl font-extrabold text-purple-300">
+          <div className="text-xl sm:text-2xl font-extrabold text-purple-300">
             {quizzes.length > 0 ? `${quizAccuracy}%` : 'N/A'}
           </div>
-          <span className="text-[10px] text-slate-500">{quizzes.length} tests completed</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 truncate block">{quizzes.length} tests taken</span>
         </div>
       </div>
 
       {/* 2.5 Placement Brain Warmup / Daily Recall Card */}
-      <div className="relative overflow-hidden p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl">
+      <div className="relative overflow-hidden p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div className="flex items-center space-x-2.5">
             <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
